@@ -1,0 +1,19 @@
+﻿[package]
+name = "OpenTron-learning"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+OpenTron-core = { path = "../OpenTron-core" }
+OpenTron-traces = { path = "../OpenTron-traces" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+rand = { workspace = true }
+parking_lot = { workspace = true }
+rusqlite = { workspace = true }
+uuid = { workspace = true }
+regex = { workspace = true }
+once_cell = { workspace = true }
+

@@ -1,0 +1,12 @@
+    let mut serve_argv: Vec<String> = vec![
+        "serve".into(),
+        "--port".into(),
+        TRON_PORT.to_string(),
+    ];
+    
+    // Extract engine-host if present in plan.serve_args
+    // Java Serve class only recognizes: --port, --host, --engine-host
+    if let Some((_, host)) = &plan.engine_host {
+        serve_argv.push("--engine-host".into());
+        serve_argv.push(host.clone());
+    }

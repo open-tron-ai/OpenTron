@@ -1,0 +1,646 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< org.opentron:opentron-java-backend >-----------------
+[INFO] Building opentron-java-backend 0.1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ opentron-java-backend ---
+[WARNING] Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ opentron-java-backend ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ opentron-java-backend ---
+[WARNING] Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+[INFO] Copying 1 resource from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ opentron-java-backend ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ opentron-java-backend ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running org.opentron.backend.integration.EngineStubIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.1.6)
+
+2026-06-23T16:18:46.190+03:00  INFO o.o.b.i.EngineStubIntegrationTest : Starting EngineStubIntegrationTest using Java 26.0.1 with PID 13556 (started by ermis in C:\Users\ermis\Documents\OpenTron\java\opentron-java\backend)
+2026-06-23T16:18:46.192+03:00  INFO o.o.b.i.EngineStubIntegrationTest : No active profile set, falling back to 1 default profile: "default"
+2026-06-23T16:18:47.273+03:00  INFO o.s.b.w.embedded.tomcat.TomcatWebServer : Tomcat initialized with port(s): 0 (http)
+2026-06-23T16:18:47.279+03:00  INFO o.a.coyote.http11.Http11NioProtocol : Initializing ProtocolHandler ["http-nio-auto-1"]
+2026-06-23T16:18:47.281+03:00  INFO o.apache.catalina.core.StandardService : Starting service [Tomcat]
+2026-06-23T16:18:47.282+03:00  INFO o.apache.catalina.core.StandardEngine : Starting Servlet engine: [Apache Tomcat/10.1.16]
+2026-06-23T16:18:47.355+03:00  INFO o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring embedded WebApplicationContext
+2026-06-23T16:18:47.355+03:00  INFO o.s.b.w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1136 ms
+[OpentronBackendApplication] engine.host=http://127.0.0.1:65223 apiKey=<blank>
+2026-06-23T16:18:48.142+03:00 DEBUG reactor.netty.tcp.TcpResources : [http] resources will use the default LoopResources: DefaultLoopResources {prefix=reactor-http, daemon=true, selectCount=20, workerCount=20}
+2026-06-23T16:18:48.144+03:00 DEBUG reactor.netty.tcp.TcpResources : [http] resources will use the default ConnectionProvider: reactor.netty.resources.DefaultPooledConnectionProvider@7ec13984
+2026-06-23T16:18:48.181+03:00  INFO o.s.b.a.e.web.EndpointLinksResolver : Exposing 1 endpoint(s) beneath base path '/actuator'
+2026-06-23T16:18:48.241+03:00  INFO o.a.coyote.http11.Http11NioProtocol : Starting ProtocolHandler ["http-nio-auto-1"]
+2026-06-23T16:18:48.253+03:00  INFO o.s.b.w.embedded.tomcat.TomcatWebServer : Tomcat started on port(s): 65225 (http) with context path ''
+2026-06-23T16:18:48.268+03:00  INFO o.o.b.i.EngineStubIntegrationTest : Started EngineStubIntegrationTest in 2.539 seconds (process running for 3.327)
+2026-06-23T16:18:48.805+03:00 DEBUG o.s.w.r.f.client.ExchangeFunctions : [36330be8] HTTP POST http://127.0.0.1:65225/v1/chat/completions
+2026-06-23T16:18:48.812+03:00 DEBUG r.netty.resources.DefaultLoopIOUring : Default io_uring support : false
+2026-06-23T16:18:48.818+03:00 DEBUG r.netty.resources.DefaultLoopEpoll : Default Epoll support : false
+2026-06-23T16:18:48.819+03:00 DEBUG r.netty.resources.DefaultLoopKQueue : Default KQueue support : false
+2026-06-23T16:18:48.904+03:00 DEBUG r.n.resources.PooledConnectionProvider : Creating a new [http] client pool [PoolFactory{evictionInterval=PT0S, leasingStrategy=fifo, maxConnections=500, maxIdleTime=-1, maxLifeTime=-1, metricsEnabled=false, pendingAcquireMaxCount=1000, pendingAcquireTimeout=45000}] for [/127.0.0.1:65225]
+2026-06-23T16:18:48.953+03:00 DEBUG r.n.resources.PooledConnectionProvider : [c56531a1] Created a new pooled channel, now: 0 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:48.972+03:00 DEBUG r.netty.transport.TransportConfig : [c56531a1] Initialized pipeline DefaultChannelPipeline{(reactor.left.httpCodec = io.netty.handler.codec.http.HttpClientCodec), (reactor.left.httpDecompressor = io.netty.handler.codec.http.HttpContentDecompressor), (reactor.right.reactiveBridge = reactor.netty.channel.ChannelOperationsHandler)}
+2026-06-23T16:18:48.986+03:00 DEBUG r.netty.transport.TransportConnector : [c56531a1] Connecting to [/127.0.0.1:65225].
+2026-06-23T16:18:48.990+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [c56531a1, L:/127.0.0.1:65226 - R:/127.0.0.1:65225] Registering pool release on close event for channel
+2026-06-23T16:18:48.990+03:00 DEBUG r.n.resources.PooledConnectionProvider : [c56531a1, L:/127.0.0.1:65226 - R:/127.0.0.1:65225] Channel connected, now: 1 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:48.990+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [c56531a1, L:/127.0.0.1:65226 - R:/127.0.0.1:65225] onStateChange(PooledConnection{channel=[id: 0xc56531a1, L:/127.0.0.1:65226 - R:/127.0.0.1:65225]}, [connected])
+2026-06-23T16:18:48.997+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [c56531a1-1, L:/127.0.0.1:65226 - R:/127.0.0.1:65225] onStateChange(GET{uri=null, connection=PooledConnection{channel=[id: 0xc56531a1, L:/127.0.0.1:65226 - R:/127.0.0.1:65225]}}, [configured])
+2026-06-23T16:18:48.998+03:00 DEBUG r.netty.http.client.HttpClientConnect : [c56531a1-1, L:/127.0.0.1:65226 - R:/127.0.0.1:65225] Handler is being applied: {uri=http://127.0.0.1:65225/v1/chat/completions, method=POST}
+2026-06-23T16:18:49.000+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [c56531a1-1, L:/127.0.0.1:65226 - R:/127.0.0.1:65225] onStateChange(POST{uri=/v1/chat/completions, connection=PooledConnection{channel=[id: 0xc56531a1, L:/127.0.0.1:65226 - R:/127.0.0.1:65225]}}, [request_prepared])
+2026-06-23T16:18:49.036+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [c56531a1-1, L:/127.0.0.1:65226 - R:/127.0.0.1:65225] onStateChange(POST{uri=/v1/chat/completions, connection=PooledConnection{channel=[id: 0xc56531a1, L:/127.0.0.1:65226 - R:/127.0.0.1:65225]}}, [request_sent])
+2026-06-23T16:18:49.071+03:00  INFO o.a.c.c.C.[Tomcat].[localhost].[/] : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-06-23T16:18:49.071+03:00  INFO o.s.web.servlet.DispatcherServlet : Initializing Servlet 'dispatcherServlet'
+2026-06-23T16:18:49.072+03:00  INFO o.s.web.servlet.DispatcherServlet : Completed initialization in 1 ms
+[ChatController] forwarding to engine /v1/chat/completions stream=true payloadKeys=[model, messages, stream]
+[WebClient][Request] POST http://127.0.0.1:65223/v1/chat/completions
+[WebClient][Request][Header] Content-Type: [application/json, application/json]
+[WebClient][Request][Header] Accept: [text/event-stream, text/event-stream]
+[WebClient][Request][Header] accept-encoding: [gzip]
+[WebClient][Request][Header] user-agent: [ReactorNetty/1.1.13]
+[WebClient][Request][Header] host: [127.0.0.1:65225]
+2026-06-23T16:18:49.149+03:00 DEBUG o.s.w.r.f.client.ExchangeFunctions : [2826b65d] HTTP POST http://127.0.0.1:65223/v1/chat/completions
+2026-06-23T16:18:49.149+03:00 DEBUG r.n.resources.PooledConnectionProvider : Creating a new [opentron-pool] client pool [PoolFactory{evictionInterval=PT0S, leasingStrategy=fifo, maxConnections=200, maxIdleTime=-1, maxLifeTime=-1, metricsEnabled=false, pendingAcquireMaxCount=400, pendingAcquireTimeout=60000}] for [/127.0.0.1:65223]
+2026-06-23T16:18:49.150+03:00 DEBUG r.n.resources.PooledConnectionProvider : [61b324f3] Created a new pooled channel, now: 0 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:49.151+03:00 DEBUG r.netty.transport.TransportConfig : [61b324f3] Initialized pipeline DefaultChannelPipeline{(reactor.left.loggingHandler = reactor.netty.transport.logging.ReactorNettyLoggingHandler), (reactor.left.httpCodec = io.netty.handler.codec.http.HttpClientCodec), (reactor.right.reactiveBridge = reactor.netty.channel.ChannelOperationsHandler)}
+2026-06-23T16:18:49.151+03:00 DEBUG reactor.netty.http.client.HttpClient : [61b324f3] REGISTERED
+2026-06-23T16:18:49.152+03:00 DEBUG r.netty.transport.TransportConnector : [61b324f3] Connecting to [/127.0.0.1:65223].
+2026-06-23T16:18:49.152+03:00 DEBUG reactor.netty.http.client.HttpClient : [61b324f3] CONNECT: /127.0.0.1:65223
+2026-06-23T16:18:49.153+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [61b324f3, L:/127.0.0.1:65227 - R:/127.0.0.1:65223] Registering pool release on close event for channel
+2026-06-23T16:18:49.153+03:00 DEBUG r.n.resources.PooledConnectionProvider : [61b324f3, L:/127.0.0.1:65227 - R:/127.0.0.1:65223] Channel connected, now: 1 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:49.153+03:00 DEBUG reactor.netty.http.client.HttpClient : [61b324f3, L:/127.0.0.1:65227 - R:/127.0.0.1:65223] ACTIVE
+2026-06-23T16:18:49.153+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [61b324f3, L:/127.0.0.1:65227 - R:/127.0.0.1:65223] onStateChange(PooledConnection{channel=[id: 0x61b324f3, L:/127.0.0.1:65227 - R:/127.0.0.1:65223]}, [connected])
+2026-06-23T16:18:49.154+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [61b324f3-1, L:/127.0.0.1:65227 - R:/127.0.0.1:65223] onStateChange(GET{uri=null, connection=PooledConnection{channel=[id: 0x61b324f3, L:/127.0.0.1:65227 - R:/127.0.0.1:65223]}}, [configured])
+2026-06-23T16:18:49.154+03:00 DEBUG r.netty.http.client.HttpClientConnect : [61b324f3-1, L:/127.0.0.1:65227 - R:/127.0.0.1:65223] Handler is being applied: {uri=http://127.0.0.1:65223/v1/chat/completions, method=POST}
+2026-06-23T16:18:49.154+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [61b324f3-1, L:/127.0.0.1:65227 - R:/127.0.0.1:65223] onStateChange(POST{uri=/v1/chat/completions, connection=PooledConnection{channel=[id: 0x61b324f3, L:/127.0.0.1:65227 - R:/127.0.0.1:65223]}}, [request_prepared])
+2026-06-23T16:18:49.173+03:00 DEBUG reactor.netty.http.client.HttpClient : [61b324f3-1, L:/127.0.0.1:65227 - R:/127.0.0.1:65223] WRITE: 255B POST /v1/chat/completions HTTP/1.1
+Content-Type: application/json
+Content-Type: application/json
+Accept: text/event-stream
+Accept: text/event-stream
+accept-encoding: gzip
+user-agent: ReactorNetty/1.1.13
+host: 127.0.0.1:65225
+content-length: 44
+
+
+2026-06-23T16:18:49.173+03:00 DEBUG reactor.netty.http.client.HttpClient : [61b324f3-1, L:/127.0.0.1:65227 - R:/127.0.0.1:65223] WRITE: 44B {"model":"test","messages":[],"stream":true}
+2026-06-23T16:18:49.173+03:00 DEBUG reactor.netty.http.client.HttpClient : [61b324f3-1, L:/127.0.0.1:65227 - R:/127.0.0.1:65223] FLUSH
+2026-06-23T16:18:49.175+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [61b324f3-1, L:/127.0.0.1:65227 - R:/127.0.0.1:65223] onStateChange(POST{uri=/v1/chat/completions, connection=PooledConnection{channel=[id: 0x61b324f3, L:/127.0.0.1:65227 - R:/127.0.0.1:65223]}}, [request_sent])
+2026-06-23T16:18:53.954+03:00 DEBUG o.s.w.r.f.client.ExchangeFunctions : [36330be8] Cancel signal (to close connection)
+2026-06-23T16:18:53.955+03:00 DEBUG r.n.http.client.HttpClientOperations : [c56531a1-1, L:/127.0.0.1:65226 - R:/127.0.0.1:65225] Http client inbound receiver cancelled, closing channel.
+2026-06-23T16:18:53.957+03:00 DEBUG r.n.resources.PooledConnectionProvider : [c56531a1-1, L:/127.0.0.1:65226 ! R:/127.0.0.1:65225] Channel closed, now: 0 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:53.959+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [c56531a1-1, L:/127.0.0.1:65226 ! R:/127.0.0.1:65225] onStateChange(POST{uri=/v1/chat/completions, connection=PooledConnection{channel=[id: 0xc56531a1, L:/127.0.0.1:65226 ! R:/127.0.0.1:65225]}}, [disconnecting])
+2026-06-23T16:18:53.969+03:00 DEBUG o.s.w.r.f.client.ExchangeFunctions : [7c871ce4] HTTP GET http://127.0.0.1:65225/v1/models
+2026-06-23T16:18:53.971+03:00 DEBUG r.n.resources.PooledConnectionProvider : [bfac6cad] Created a new pooled channel, now: 0 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:53.971+03:00 DEBUG r.netty.transport.TransportConfig : [bfac6cad] Initialized pipeline DefaultChannelPipeline{(reactor.left.httpCodec = io.netty.handler.codec.http.HttpClientCodec), (reactor.left.httpDecompressor = io.netty.handler.codec.http.HttpContentDecompressor), (reactor.right.reactiveBridge = reactor.netty.channel.ChannelOperationsHandler)}
+2026-06-23T16:18:53.972+03:00 DEBUG r.netty.transport.TransportConnector : [bfac6cad] Connecting to [/127.0.0.1:65225].
+2026-06-23T16:18:53.973+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [bfac6cad, L:/127.0.0.1:65231 - R:/127.0.0.1:65225] Registering pool release on close event for channel
+2026-06-23T16:18:53.973+03:00 DEBUG r.n.resources.PooledConnectionProvider : [bfac6cad, L:/127.0.0.1:65231 - R:/127.0.0.1:65225] Channel connected, now: 1 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:53.973+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [bfac6cad, L:/127.0.0.1:65231 - R:/127.0.0.1:65225] onStateChange(PooledConnection{channel=[id: 0xbfac6cad, L:/127.0.0.1:65231 - R:/127.0.0.1:65225]}, [connected])
+2026-06-23T16:18:53.973+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [bfac6cad-1, L:/127.0.0.1:65231 - R:/127.0.0.1:65225] onStateChange(GET{uri=null, connection=PooledConnection{channel=[id: 0xbfac6cad, L:/127.0.0.1:65231 - R:/127.0.0.1:65225]}}, [configured])
+2026-06-23T16:18:53.973+03:00 DEBUG r.netty.http.client.HttpClientConnect : [bfac6cad-1, L:/127.0.0.1:65231 - R:/127.0.0.1:65225] Handler is being applied: {uri=http://127.0.0.1:65225/v1/models, method=GET}
+2026-06-23T16:18:53.973+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [bfac6cad-1, L:/127.0.0.1:65231 - R:/127.0.0.1:65225] onStateChange(GET{uri=/v1/models, connection=PooledConnection{channel=[id: 0xbfac6cad, L:/127.0.0.1:65231 - R:/127.0.0.1:65225]}}, [request_prepared])
+2026-06-23T16:18:53.976+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [bfac6cad-1, L:/127.0.0.1:65231 - R:/127.0.0.1:65225] onStateChange(GET{uri=/v1/models, connection=PooledConnection{channel=[id: 0xbfac6cad, L:/127.0.0.1:65231 - R:/127.0.0.1:65225]}}, [request_sent])
+[WebClient][Request] GET http://127.0.0.1:65223/v1/models
+2026-06-23T16:18:53.980+03:00 DEBUG o.s.w.r.f.client.ExchangeFunctions : [eb769cd] HTTP GET http://127.0.0.1:65223/v1/models
+2026-06-23T16:18:53.981+03:00 DEBUG r.n.resources.PooledConnectionProvider : [c80e7b21] Created a new pooled channel, now: 1 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:53.982+03:00 DEBUG r.netty.transport.TransportConfig : [c80e7b21] Initialized pipeline DefaultChannelPipeline{(reactor.left.loggingHandler = reactor.netty.transport.logging.ReactorNettyLoggingHandler), (reactor.left.httpCodec = io.netty.handler.codec.http.HttpClientCodec), (reactor.right.reactiveBridge = reactor.netty.channel.ChannelOperationsHandler)}
+2026-06-23T16:18:53.982+03:00 DEBUG reactor.netty.http.client.HttpClient : [c80e7b21] REGISTERED
+2026-06-23T16:18:53.982+03:00 DEBUG r.netty.transport.TransportConnector : [c80e7b21] Connecting to [/127.0.0.1:65223].
+2026-06-23T16:18:53.982+03:00 DEBUG reactor.netty.http.client.HttpClient : [c80e7b21] CONNECT: /127.0.0.1:65223
+2026-06-23T16:18:53.983+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [c80e7b21, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] Registering pool release on close event for channel
+2026-06-23T16:18:53.983+03:00 DEBUG r.n.resources.PooledConnectionProvider : [c80e7b21, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] Channel connected, now: 2 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:53.983+03:00 DEBUG reactor.netty.http.client.HttpClient : [c80e7b21, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] ACTIVE
+2026-06-23T16:18:53.983+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [c80e7b21, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] onStateChange(PooledConnection{channel=[id: 0xc80e7b21, L:/127.0.0.1:65232 - R:/127.0.0.1:65223]}, [connected])
+2026-06-23T16:18:53.983+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [c80e7b21-1, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] onStateChange(GET{uri=null, connection=PooledConnection{channel=[id: 0xc80e7b21, L:/127.0.0.1:65232 - R:/127.0.0.1:65223]}}, [configured])
+2026-06-23T16:18:53.983+03:00 DEBUG r.netty.http.client.HttpClientConnect : [c80e7b21-1, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] Handler is being applied: {uri=http://127.0.0.1:65223/v1/models, method=GET}
+2026-06-23T16:18:53.983+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [c80e7b21-1, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] onStateChange(GET{uri=/v1/models, connection=PooledConnection{channel=[id: 0xc80e7b21, L:/127.0.0.1:65232 - R:/127.0.0.1:65223]}}, [request_prepared])
+2026-06-23T16:18:53.985+03:00 DEBUG reactor.netty.http.client.HttpClient : [c80e7b21-1, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] WRITE: 96B GET /v1/models HTTP/1.1
+user-agent: ReactorNetty/1.1.13
+host: 127.0.0.1:65223
+accept: */*
+
+
+2026-06-23T16:18:53.985+03:00 DEBUG reactor.netty.http.client.HttpClient : [c80e7b21-1, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] FLUSH
+2026-06-23T16:18:53.985+03:00 DEBUG reactor.netty.http.client.HttpClient : [c80e7b21-1, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] WRITE: 0B
+2026-06-23T16:18:53.986+03:00 DEBUG reactor.netty.http.client.HttpClient : [c80e7b21-1, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] FLUSH
+2026-06-23T16:18:53.986+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [c80e7b21-1, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] onStateChange(GET{uri=/v1/models, connection=PooledConnection{channel=[id: 0xc80e7b21, L:/127.0.0.1:65232 - R:/127.0.0.1:65223]}}, [request_sent])
+2026-06-23T16:18:58.971+03:00 DEBUG o.s.w.r.f.client.ExchangeFunctions : [7c871ce4] Cancel signal (to close connection)
+2026-06-23T16:18:58.971+03:00 DEBUG r.n.http.client.HttpClientOperations : [bfac6cad-1, L:/127.0.0.1:65231 - R:/127.0.0.1:65225] Http client inbound receiver cancelled, closing channel.
+2026-06-23T16:18:58.971+03:00 DEBUG r.n.resources.PooledConnectionProvider : [bfac6cad-1, L:/127.0.0.1:65231 ! R:/127.0.0.1:65225] Channel closed, now: 0 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:58.971+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [bfac6cad-1, L:/127.0.0.1:65231 ! R:/127.0.0.1:65225] onStateChange(GET{uri=/v1/models, connection=PooledConnection{channel=[id: 0xbfac6cad, L:/127.0.0.1:65231 ! R:/127.0.0.1:65225]}}, [disconnecting])
+2026-06-23T16:18:58.979+03:00 DEBUG r.n.resources.PooledConnectionProvider : Creating a new [http] client pool [PoolFactory{evictionInterval=PT0S, leasingStrategy=fifo, maxConnections=500, maxIdleTime=-1, maxLifeTime=-1, metricsEnabled=false, pendingAcquireMaxCount=1000, pendingAcquireTimeout=45000}] for [/127.0.0.1:65225]
+2026-06-23T16:18:58.979+03:00 DEBUG r.n.resources.PooledConnectionProvider : [74cc6e23] Created a new pooled channel, now: 0 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:58.980+03:00 DEBUG r.netty.transport.TransportConfig : [74cc6e23] Initialized pipeline DefaultChannelPipeline{(reactor.left.httpCodec = io.netty.handler.codec.http.HttpClientCodec), (reactor.right.reactiveBridge = reactor.netty.channel.ChannelOperationsHandler)}
+2026-06-23T16:18:58.980+03:00 DEBUG r.netty.transport.TransportConnector : [74cc6e23] Connecting to [/127.0.0.1:65225].
+2026-06-23T16:18:58.981+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [74cc6e23, L:/127.0.0.1:65234 - R:/127.0.0.1:65225] Registering pool release on close event for channel
+2026-06-23T16:18:58.981+03:00 DEBUG r.n.resources.PooledConnectionProvider : [74cc6e23, L:/127.0.0.1:65234 - R:/127.0.0.1:65225] Channel connected, now: 1 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:58.981+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [74cc6e23, L:/127.0.0.1:65234 - R:/127.0.0.1:65225] onStateChange(PooledConnection{channel=[id: 0x74cc6e23, L:/127.0.0.1:65234 - R:/127.0.0.1:65225]}, [connected])
+2026-06-23T16:18:58.981+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [74cc6e23-1, L:/127.0.0.1:65234 - R:/127.0.0.1:65225] onStateChange(GET{uri=null, connection=PooledConnection{channel=[id: 0x74cc6e23, L:/127.0.0.1:65234 - R:/127.0.0.1:65225]}}, [configured])
+2026-06-23T16:18:58.981+03:00 DEBUG r.netty.http.client.HttpClientConnect : [74cc6e23-1, L:/127.0.0.1:65234 - R:/127.0.0.1:65225] Handler is being applied: {uri=ws://127.0.0.1:65225/v1/chat/stream, method=GET}
+2026-06-23T16:18:58.981+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [74cc6e23-1, L:/127.0.0.1:65234 - R:/127.0.0.1:65225] onStateChange(GET{uri=/v1/chat/stream, connection=PooledConnection{channel=[id: 0x74cc6e23, L:/127.0.0.1:65234 - R:/127.0.0.1:65225]}}, [request_prepared])
+2026-06-23T16:18:58.988+03:00 DEBUG reactor.netty.ReactorNetty : [74cc6e23-1, L:/127.0.0.1:65234 - R:/127.0.0.1:65225] Added encoder [reactor.left.httpAggregator] at the beginning of the user pipeline, full pipeline: [reactor.left.httpCodec, reactor.left.httpAggregator, reactor.right.reactiveBridge, DefaultChannelPipeline$TailContext#0]
+2026-06-23T16:18:58.988+03:00 DEBUG reactor.netty.ReactorNetty : [74cc6e23-1, L:/127.0.0.1:65234 - R:/127.0.0.1:65225] Non Removed handler: reactor.left.httpMetricsHandler, context: null, pipeline: DefaultChannelPipeline{(reactor.left.httpCodec = io.netty.handler.codec.http.HttpClientCodec), (reactor.left.httpAggregator = io.netty.handler.codec.http.HttpObjectAggregator), (reactor.right.reactiveBridge = reactor.netty.channel.ChannelOperationsHandler)}
+2026-06-23T16:18:58.988+03:00 DEBUG r.n.http.client.HttpClientOperations : [74cc6e23-1, L:/127.0.0.1:65234 - R:/127.0.0.1:65225] Attempting to perform websocket handshake with ws://127.0.0.1:65225/v1/chat/stream
+[ForwardingController] forwarding without body, uri=/v1/chat/stream method=GET
+[WebClient][Request] GET http://127.0.0.1:65223/v1/chat/stream
+[WebClient][Request][Header] user-agent: [ReactorNetty/1.1.13]
+[WebClient][Request][Header] accept: [*/*]
+[WebClient][Request][Header] host: [127.0.0.1:65225]
+[WebClient][Request][Header] upgrade: [websocket]
+[WebClient][Request][Header] connection: [upgrade]
+[WebClient][Request][Header] sec-websocket-key: [2UOg76n9+ajeHrfAJtbViw==]
+[WebClient][Request][Header] origin: [http://127.0.0.1:65225]
+[WebClient][Request][Header] sec-websocket-version: [13]
+2026-06-23T16:18:59.000+03:00 DEBUG o.s.w.r.f.client.ExchangeFunctions : [7dbb26a9] HTTP GET http://127.0.0.1:65223/v1/chat/stream
+2026-06-23T16:18:59.001+03:00 DEBUG r.n.resources.PooledConnectionProvider : [3ee3fa43] Created a new pooled channel, now: 2 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:59.002+03:00 DEBUG r.netty.transport.TransportConfig : [3ee3fa43] Initialized pipeline DefaultChannelPipeline{(reactor.left.loggingHandler = reactor.netty.transport.logging.ReactorNettyLoggingHandler), (reactor.left.httpCodec = io.netty.handler.codec.http.HttpClientCodec), (reactor.right.reactiveBridge = reactor.netty.channel.ChannelOperationsHandler)}
+2026-06-23T16:18:59.002+03:00 DEBUG reactor.netty.http.client.HttpClient : [3ee3fa43] REGISTERED
+2026-06-23T16:18:59.002+03:00 DEBUG r.netty.transport.TransportConnector : [3ee3fa43] Connecting to [/127.0.0.1:65223].
+2026-06-23T16:18:59.003+03:00 DEBUG reactor.netty.http.client.HttpClient : [3ee3fa43] CONNECT: /127.0.0.1:65223
+2026-06-23T16:18:59.003+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [3ee3fa43, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] Registering pool release on close event for channel
+2026-06-23T16:18:59.003+03:00 DEBUG r.n.resources.PooledConnectionProvider : [3ee3fa43, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] Channel connected, now: 3 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:18:59.004+03:00 DEBUG reactor.netty.http.client.HttpClient : [3ee3fa43, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] ACTIVE
+2026-06-23T16:18:59.004+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [3ee3fa43, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] onStateChange(PooledConnection{channel=[id: 0x3ee3fa43, L:/127.0.0.1:65235 - R:/127.0.0.1:65223]}, [connected])
+2026-06-23T16:18:59.004+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [3ee3fa43-1, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] onStateChange(GET{uri=null, connection=PooledConnection{channel=[id: 0x3ee3fa43, L:/127.0.0.1:65235 - R:/127.0.0.1:65223]}}, [configured])
+2026-06-23T16:18:59.004+03:00 DEBUG r.netty.http.client.HttpClientConnect : [3ee3fa43-1, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] Handler is being applied: {uri=http://127.0.0.1:65223/v1/chat/stream, method=GET}
+2026-06-23T16:18:59.004+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [3ee3fa43-1, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] onStateChange(GET{uri=/v1/chat/stream, connection=PooledConnection{channel=[id: 0x3ee3fa43, L:/127.0.0.1:65235 - R:/127.0.0.1:65223]}}, [request_prepared])
+2026-06-23T16:18:59.006+03:00 DEBUG reactor.netty.http.client.HttpClient : [3ee3fa43-1, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] WRITE: 246B GET /v1/chat/stream HTTP/1.1
+user-agent: ReactorNetty/1.1.13
+accept: */*
+host: 127.0.0.1:65225
+upgrade: websocket
+connection: upgrade
+sec-websocket-key: 2UOg76n9+ajeHrfAJtbViw==
+origin: http://127.0.0.1:65225
+sec-websocket-version: 13
+
+
+2026-06-23T16:18:59.007+03:00 DEBUG reactor.netty.http.client.HttpClient : [3ee3fa43-1, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] FLUSH
+2026-06-23T16:18:59.007+03:00 DEBUG reactor.netty.http.client.HttpClient : [3ee3fa43-1, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] WRITE: 0B
+2026-06-23T16:18:59.007+03:00 DEBUG reactor.netty.http.client.HttpClient : [3ee3fa43-1, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] FLUSH
+2026-06-23T16:18:59.007+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [3ee3fa43-1, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] onStateChange(GET{uri=/v1/chat/stream, connection=PooledConnection{channel=[id: 0x3ee3fa43, L:/127.0.0.1:65235 - R:/127.0.0.1:65223]}}, [request_sent])
+2026-06-23T16:19:08.980+03:00 DEBUG r.n.http.client.HttpClientOperations : [74cc6e23-1, L:/127.0.0.1:65234 - R:/127.0.0.1:65225] Http client inbound receiver cancelled, closing channel.
+2026-06-23T16:19:08.980+03:00 DEBUG r.n.resources.PooledConnectionProvider : [74cc6e23-1, L:/127.0.0.1:65234 ! R:/127.0.0.1:65225] Channel closed, now: 0 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:19:08.981+03:00 DEBUG reactor.netty.ReactorNetty : [74cc6e23-1, L:/127.0.0.1:65234 ! R:/127.0.0.1:65225] Non Removed handler: reactor.left.httpAggregator, context: ChannelHandlerContext(reactor.left.httpAggregator, [id: 0x74cc6e23, L:/127.0.0.1:65234 ! R:/127.0.0.1:65225]), pipeline: DefaultChannelPipeline{(reactor.left.httpCodec = io.netty.handler.codec.http.HttpClientCodec), (ws-encoder = io.netty.handler.codec.http.websocketx.WebSocket13FrameEncoder), (reactor.left.httpAggregator = io.netty.handler.codec.http.HttpObjectAggregator), (reactor.right.reactiveBridge = reactor.netty.channel.ChannelOperationsHandler)}
+2026-06-23T16:19:08.984+03:00  WARN r.netty.http.client.HttpClientConnect : [74cc6e23-1, L:/127.0.0.1:65234 ! R:/127.0.0.1:65225] The connection observed an error
+io.netty.handler.codec.http.websocketx.WebSocketClientHandshakeException: Connection prematurely closed BEFORE opening handshake is complete.
+	at reactor.netty.http.client.WebsocketClientOperations.onInboundClose(WebsocketClientOperations.java:184)
+	at reactor.netty.channel.ChannelOperationsHandler.channelInactive(ChannelOperationsHandler.java:73)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:305)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:281)
+	at io.netty.channel.AbstractChannelHandlerContext.fireChannelInactive(AbstractChannelHandlerContext.java:274)
+	at io.netty.channel.ChannelInboundHandlerAdapter.channelInactive(ChannelInboundHandlerAdapter.java:81)
+	at io.netty.handler.codec.MessageAggregator.channelInactive(MessageAggregator.java:441)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:305)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:281)
+	at io.netty.channel.AbstractChannelHandlerContext.fireChannelInactive(AbstractChannelHandlerContext.java:274)
+	at io.netty.channel.CombinedChannelDuplexHandler$DelegatingChannelHandlerContext.fireChannelInactive(CombinedChannelDuplexHandler.java:418)
+	at io.netty.handler.codec.ByteToMessageDecoder.channelInputClosed(ByteToMessageDecoder.java:411)
+	at io.netty.handler.codec.ByteToMessageDecoder.channelInactive(ByteToMessageDecoder.java:376)
+	at io.netty.handler.codec.http.HttpClientCodec$Decoder.channelInactive(HttpClientCodec.java:328)
+	at io.netty.channel.CombinedChannelDuplexHandler.channelInactive(CombinedChannelDuplexHandler.java:221)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:303)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:281)
+	at io.netty.channel.AbstractChannelHandlerContext.fireChannelInactive(AbstractChannelHandlerContext.java:274)
+	at io.netty.channel.DefaultChannelPipeline$HeadContext.channelInactive(DefaultChannelPipeline.java:1405)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:301)
+	at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:281)
+	at io.netty.channel.DefaultChannelPipeline.fireChannelInactive(DefaultChannelPipeline.java:901)
+	at io.netty.channel.AbstractChannel$AbstractUnsafe$7.run(AbstractChannel.java:813)
+	at io.netty.util.concurrent.AbstractEventExecutor.runTask(AbstractEventExecutor.java:173)
+	at io.netty.util.concurrent.AbstractEventExecutor.safeExecute(AbstractEventExecutor.java:166)
+	at io.netty.util.concurrent.SingleThreadEventExecutor.runAllTasks(SingleThreadEventExecutor.java:470)
+	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:569)
+	at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:997)
+	at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+	at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+	at java.base/java.lang.Thread.run(Thread.java:1516)
+2026-06-23T16:19:08.986+03:00 DEBUG reactor.netty.http.client.HttpClient : [61b324f3-1, L:/127.0.0.1:65227 - R:/127.0.0.1:65223] READ COMPLETE
+2026-06-23T16:19:08.986+03:00 DEBUG reactor.netty.http.client.HttpClient : [c80e7b21-1, L:/127.0.0.1:65232 - R:/127.0.0.1:65223] READ COMPLETE
+2026-06-23T16:19:08.986+03:00 DEBUG reactor.netty.http.client.HttpClient : [3ee3fa43-1, L:/127.0.0.1:65235 - R:/127.0.0.1:65223] READ COMPLETE
+2026-06-23T16:19:08.986+03:00 DEBUG r.n.resources.PooledConnectionProvider : [61b324f3-1, L:/127.0.0.1:65227 ! R:/127.0.0.1:65223] Channel closed, now: 0 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:19:08.986+03:00 DEBUG r.n.resources.PooledConnectionProvider : [c80e7b21-1, L:/127.0.0.1:65232 ! R:/127.0.0.1:65223] Channel closed, now: 0 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:19:08.986+03:00 DEBUG reactor.netty.http.client.HttpClient : [61b324f3-1, L:/127.0.0.1:65227 ! R:/127.0.0.1:65223] INACTIVE
+2026-06-23T16:19:08.987+03:00 DEBUG reactor.netty.http.client.HttpClient : [c80e7b21-1, L:/127.0.0.1:65232 ! R:/127.0.0.1:65223] INACTIVE
+2026-06-23T16:19:08.987+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [61b324f3-1, L:/127.0.0.1:65227 ! R:/127.0.0.1:65223] onStateChange(POST{uri=/v1/chat/completions, connection=PooledConnection{channel=[id: 0x61b324f3, L:/127.0.0.1:65227 ! R:/127.0.0.1:65223]}}, [response_incomplete])
+2026-06-23T16:19:08.987+03:00 DEBUG r.n.resources.PooledConnectionProvider : [3ee3fa43-1, L:/127.0.0.1:65235 ! R:/127.0.0.1:65223] Channel closed, now: 0 active connections, 0 inactive connections and 0 pending acquire requests.
+2026-06-23T16:19:08.987+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [c80e7b21-1, L:/127.0.0.1:65232 ! R:/127.0.0.1:65223] onStateChange(GET{uri=/v1/models, connection=PooledConnection{channel=[id: 0xc80e7b21, L:/127.0.0.1:65232 ! R:/127.0.0.1:65223]}}, [response_incomplete])
+2026-06-23T16:19:08.987+03:00 DEBUG reactor.netty.http.client.HttpClient : [3ee3fa43-1, L:/127.0.0.1:65235 ! R:/127.0.0.1:65223] INACTIVE
+2026-06-23T16:19:08.987+03:00  WARN r.netty.http.client.HttpClientConnect : [61b324f3-1, L:/127.0.0.1:65227 ! R:/127.0.0.1:65223] The connection observed an error
+reactor.netty.http.client.PrematureCloseException: Connection prematurely closed BEFORE response
+2026-06-23T16:19:08.987+03:00  WARN r.netty.http.client.HttpClientConnect : [c80e7b21-1, L:/127.0.0.1:65232 ! R:/127.0.0.1:65223] The connection observed an error
+reactor.netty.http.client.PrematureCloseException: Connection prematurely closed BEFORE response
+2026-06-23T16:19:08.987+03:00 DEBUG r.n.r.DefaultPooledConnectionProvider : [3ee3fa43-1, L:/127.0.0.1:65235 ! R:/127.0.0.1:65223] onStateChange(GET{uri=/v1/chat/stream, connection=PooledConnection{channel=[id: 0x3ee3fa43, L:/127.0.0.1:65235 ! R:/127.0.0.1:65223]}}, [response_incomplete])
+2026-06-23T16:19:08.987+03:00  WARN r.netty.http.client.HttpClientConnect : [3ee3fa43-1, L:/127.0.0.1:65235 ! R:/127.0.0.1:65223] The connection observed an error
+reactor.netty.http.client.PrematureCloseException: Connection prematurely closed BEFORE response
+[ERROR] Tests run: 3, Failures: 0, Errors: 3, Skipped: 0, Time elapsed: 23.54 s <<< FAILURE! -- in org.opentron.backend.integration.EngineStubIntegrationTest
+[ERROR] org.opentron.backend.integration.EngineStubIntegrationTest.testChatSSEStream -- Time elapsed: 5.601 s <<< ERROR!
+java.lang.IllegalStateException: Timeout on blocking read for 5000000000 NANOSECONDS
+	at reactor.core.publisher.BlockingSingleSubscriber.blockingGet(BlockingSingleSubscriber.java:127)
+	at reactor.core.publisher.Mono.block(Mono.java:1738)
+	at org.opentron.backend.integration.EngineStubIntegrationTest.testChatSSEStream(EngineStubIntegrationTest.java:95)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:727)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:60)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:131)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:156)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:147)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:103)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:93)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:106)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:64)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:45)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:37)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:92)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:86)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$7(TestMethodTestDescriptor.java:217)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:213)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:138)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:68)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:151)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1612)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1612)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:35)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:57)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:54)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:147)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:127)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:90)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:55)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:102)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:54)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:114)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:86)
+	at org.junit.platform.launcher.core.DefaultLauncherSession$DelegatingLauncher.execute(DefaultLauncherSession.java:86)
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithoutCancellationToken(LauncherAdapter.java:60)
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:52)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136)
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+
+[ERROR] org.opentron.backend.integration.EngineStubIntegrationTest.testModelsProxy -- Time elapsed: 5.005 s <<< ERROR!
+java.lang.IllegalStateException: Timeout on blocking read for 5000000000 NANOSECONDS
+	at reactor.core.publisher.BlockingSingleSubscriber.blockingGet(BlockingSingleSubscriber.java:127)
+	at reactor.core.publisher.Mono.block(Mono.java:1738)
+	at org.opentron.backend.integration.EngineStubIntegrationTest.testModelsProxy(EngineStubIntegrationTest.java:79)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:727)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:60)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:131)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:156)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:147)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:103)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:93)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:106)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:64)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:45)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:37)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:92)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:86)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$7(TestMethodTestDescriptor.java:217)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:213)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:138)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:68)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:151)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1612)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1612)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:35)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:57)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:54)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:147)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:127)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:90)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:55)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:102)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:54)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:114)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:86)
+	at org.junit.platform.launcher.core.DefaultLauncherSession$DelegatingLauncher.execute(DefaultLauncherSession.java:86)
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithoutCancellationToken(LauncherAdapter.java:60)
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:52)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136)
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+
+[ERROR] org.opentron.backend.integration.EngineStubIntegrationTest.testWebSocketRelay -- Time elapsed: 10.01 s <<< ERROR!
+java.lang.IllegalStateException: Timeout on blocking read for 10000000000 NANOSECONDS
+	at reactor.core.publisher.BlockingSingleSubscriber.blockingGet(BlockingSingleSubscriber.java:127)
+	at reactor.core.publisher.Mono.block(Mono.java:1738)
+	at org.opentron.backend.integration.EngineStubIntegrationTest.testWebSocketRelay(EngineStubIntegrationTest.java:111)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:727)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:60)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:131)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:156)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:147)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:103)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:93)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:106)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:64)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:45)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:37)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:92)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:86)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$7(TestMethodTestDescriptor.java:217)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:213)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:138)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:68)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:151)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1612)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1612)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:35)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:57)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:54)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:147)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:127)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:90)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:55)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:102)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:54)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:114)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:86)
+	at org.junit.platform.launcher.core.DefaultLauncherSession$DelegatingLauncher.execute(DefaultLauncherSession.java:86)
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithoutCancellationToken(LauncherAdapter.java:60)
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:52)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136)
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+
+[ForwardingController] proxy error: org.springframework.web.reactive.function.client.WebClientRequestException: Connection prematurely closed BEFORE response
+org.springframework.web.reactive.function.client.WebClientRequestException: Connection prematurely closed BEFORE response
+	at org.springframework.web.reactive.function.client.ExchangeFunctions$DefaultExchangeFunction.lambda$wrapException$9(ExchangeFunctions.java:136)
+[ChatController] streaming error: org.springframework.web.reactive.function.client.WebClientRequestException: Connection prematurely closed BEFORE response
+	Suppressed: The stacktrace has been enhanced by Reactor, refer to additional information below: 
+Error has been observed at the following site(s):
+	*__checkpoint ? Request to GET http://127.0.0.1:65223/v1/chat/stream [DefaultWebClient]
+Original Stack Trace:
+		at org.springframework.web.reactive.function.client.ExchangeFunctions$DefaultExchangeFunction.lambda$wrapException$9(ExchangeFunctions.java:136)
+		at reactor.core.publisher.MonoErrorSupplied.subscribe(MonoErrorSupplied.java:55)
+		at reactor.core.publisher.Mono.subscribe(Mono.java:4495)
+		at reactor.core.publisher.FluxOnErrorResume$ResumeSubscriber.onError(FluxOnErrorResume.java:103)
+		at reactor.core.publisher.FluxPeek$PeekSubscriber.onError(FluxPeek.java:222)
+		at reactor.core.publisher.FluxPeek$PeekSubscriber.onError(FluxPeek.java:222)
+		at reactor.core.publisher.FluxPeek$PeekSubscriber.onError(FluxPeek.java:222)
+		at reactor.core.publisher.MonoNext$NextSubscriber.onError(MonoNext.java:93)
+		at reactor.core.publisher.MonoFlatMapMany$FlatMapManyMain.onError(MonoFlatMapMany.java:204)
+		at reactor.core.publisher.SerializedSubscriber.onError(SerializedSubscriber.java:124)
+		at reactor.core.publisher.FluxRetryWhen$RetryWhenMainSubscriber.whenError(FluxRetryWhen.java:225)
+		at reactor.core.publisher.FluxRetryWhen$RetryWhenOtherSubscriber.onError(FluxRetryWhen.java:274)
+		at reactor.core.publisher.FluxContextWrite$ContextWriteSubscriber.onError(FluxContextWrite.java:121)
+		at reactor.core.publisher.FluxConcatMapNoPrefetch$FluxConcatMapNoPrefetchSubscriber.maybeOnError(FluxConcatMapNoPrefetch.java:326)
+		at reactor.core.publisher.FluxConcatMapNoPrefetch$FluxConcatMapNoPrefetchSubscriber.onNext(FluxConcatMapNoPrefetch.java:211)
+		at reactor.core.publisher.FluxContextWrite$ContextWriteSubscriber.onNext(FluxContextWrite.java:107)
+		at reactor.core.publisher.SinkManyEmitterProcessor.drain(SinkManyEmitterProcessor.java:471)
+		at reactor.core.publisher.SinkManyEmitterProcessor$EmitterInner.drainParent(SinkManyEmitterProcessor.java:615)
+		at reactor.core.publisher.FluxPublish$PubSubInner.request(FluxPublish.java:873)
+		at reactor.core.publisher.FluxContextWrite$ContextWriteSubscriber.request(FluxContextWrite.java:136)
+		at reactor.core.publisher.FluxConcatMapNoPrefetch$FluxConcatMapNoPrefetchSubscriber.request(FluxConcatMapNoPrefetch.java:336)
+		at reactor.core.publisher.FluxContextWrite$ContextWriteSubscriber.request(FluxContextWrite.java:136)
+		at reactor.core.publisher.Operators$DeferredSubscription.request(Operators.java:1717)
+		at reactor.core.publisher.FluxRetryWhen$RetryWhenMainSubscriber.onError(FluxRetryWhen.java:192)
+		at reactor.core.publisher.MonoCreate$DefaultMonoSink.error(MonoCreate.java:201)
+		at reactor.netty.http.client.HttpClientConnect$HttpObserver.onUncaughtException(HttpClientConnect.java:403)
+		at reactor.netty.ReactorNetty$CompositeConnectionObserver.onUncaughtException(ReactorNetty.java:703)
+		at reactor.netty.resources.DefaultPooledConnectionProvider$DisposableAcquire.onUncaughtException(DefaultPooledConnectionProvider.java:213)
+		at reactor.netty.resources.DefaultPooledConnectionProvider$PooledConnection.onUncaughtException(DefaultPooledConnectionProvider.java:466)
+		at reactor.netty.http.client.HttpClientOperations.onInboundClose(HttpClientOperations.java:317)
+		at reactor.netty.channel.ChannelOperationsHandler.channelInactive(ChannelOperationsHandler.java:73)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:305)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:281)
+		at io.netty.channel.AbstractChannelHandlerContext.fireChannelInactive(AbstractChannelHandlerContext.java:274)
+		at io.netty.channel.CombinedChannelDuplexHandler$DelegatingChannelHandlerContext.fireChannelInactive(CombinedChannelDuplexHandler.java:418)
+		at io.netty.handler.codec.ByteToMessageDecoder.channelInputClosed(ByteToMessageDecoder.java:411)
+		at io.netty.handler.codec.ByteToMessageDecoder.channelInactive(ByteToMessageDecoder.java:376)
+		at io.netty.handler.codec.http.HttpClientCodec$Decoder.channelInactive(HttpClientCodec.java:328)
+		at io.netty.channel.CombinedChannelDuplexHandler.channelInactive(CombinedChannelDuplexHandler.java:221)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:303)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:281)
+		at io.netty.channel.AbstractChannelHandlerContext.fireChannelInactive(AbstractChannelHandlerContext.java:274)
+		at io.netty.handler.logging.LoggingHandler.channelInactive(LoggingHandler.java:206)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:303)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:281)
+		at io.netty.channel.AbstractChannelHandlerContext.fireChannelInactive(AbstractChannelHandlerContext.java:274)
+		at io.netty.channel.DefaultChannelPipeline$HeadContext.channelInactive(DefaultChannelPipeline.java:1405)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:301)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:281)
+		at io.netty.channel.DefaultChannelPipeline.fireChannelInactive(DefaultChannelPipeline.java:901)
+		at io.netty.channel.AbstractChannel$AbstractUnsafe$7.run(AbstractChannel.java:813)
+		at io.netty.util.concurrent.AbstractEventExecutor.runTask(AbstractEventExecutor.java:173)
+		at io.netty.util.concurrent.AbstractEventExecutor.safeExecute(AbstractEventExecutor.java:166)
+		at io.netty.util.concurrent.SingleThreadEventExecutor.runAllTasks(SingleThreadEventExecutor.java:470)
+		at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:566)
+		at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:997)
+		at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+		at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+		at java.base/java.lang.Thread.run(Thread.java:1516)
+Caused by: reactor.netty.http.client.PrematureCloseException: Connection prematurely closed BEFORE response
+org.springframework.web.reactive.function.client.WebClientRequestException: Connection prematurely closed BEFORE response
+	at org.springframework.web.reactive.function.client.ExchangeFunctions$DefaultExchangeFunction.lambda$wrapException$9(ExchangeFunctions.java:136)
+	Suppressed: The stacktrace has been enhanced by Reactor, refer to additional information below: 
+Error has been observed at the following site(s):
+	*__checkpoint ? Request to POST http://127.0.0.1:65223/v1/chat/completions [DefaultWebClient]
+Original Stack Trace:
+		at org.springframework.web.reactive.function.client.ExchangeFunctions$DefaultExchangeFunction.lambda$wrapException$9(ExchangeFunctions.java:136)
+		at reactor.core.publisher.MonoErrorSupplied.subscribe(MonoErrorSupplied.java:55)
+		at reactor.core.publisher.Mono.subscribe(Mono.java:4495)
+		at reactor.core.publisher.FluxOnErrorResume$ResumeSubscriber.onError(FluxOnErrorResume.java:103)
+		at reactor.core.publisher.FluxPeek$PeekSubscriber.onError(FluxPeek.java:222)
+		at reactor.core.publisher.FluxPeek$PeekSubscriber.onError(FluxPeek.java:222)
+2026-06-23T16:19:08.997+03:00 DEBUG reactor.netty.http.client.HttpClient : [c80e7b21-1, L:/127.0.0.1:65232 ! R:/127.0.0.1:65223] UNREGISTERED
+		at reactor.core.publisher.FluxPeek$PeekSubscriber.onError(FluxPeek.java:222)
+		at reactor.core.publisher.MonoNext$NextSubscriber.onError(MonoNext.java:93)
+		at reactor.core.publisher.MonoFlatMapMany$FlatMapManyMain.onError(MonoFlatMapMany.java:204)
+2026-06-23T16:19:08.997+03:00 DEBUG reactor.netty.http.client.HttpClient : [3ee3fa43-1, L:/127.0.0.1:65235 ! R:/127.0.0.1:65223] UNREGISTERED
+		at reactor.core.publisher.SerializedSubscriber.onError(SerializedSubscriber.java:124)
+		at reactor.core.publisher.FluxRetryWhen$RetryWhenMainSubscriber.whenError(FluxRetryWhen.java:225)
+		at reactor.core.publisher.FluxRetryWhen$RetryWhenOtherSubscriber.onError(FluxRetryWhen.java:274)
+		at reactor.core.publisher.FluxContextWrite$ContextWriteSubscriber.onError(FluxContextWrite.java:121)
+		at reactor.core.publisher.FluxConcatMapNoPrefetch$FluxConcatMapNoPrefetchSubscriber.maybeOnError(FluxConcatMapNoPrefetch.java:326)
+		at reactor.core.publisher.FluxConcatMapNoPrefetch$FluxConcatMapNoPrefetchSubscriber.onNext(FluxConcatMapNoPrefetch.java:211)
+		at reactor.core.publisher.FluxContextWrite$ContextWriteSubscriber.onNext(FluxContextWrite.java:107)
+		at reactor.core.publisher.SinkManyEmitterProcessor.drain(SinkManyEmitterProcessor.java:471)
+		at reactor.core.publisher.SinkManyEmitterProcessor$EmitterInner.drainParent(SinkManyEmitterProcessor.java:615)
+		at reactor.core.publisher.FluxPublish$PubSubInner.request(FluxPublish.java:873)
+		at reactor.core.publisher.FluxContextWrite$ContextWriteSubscriber.request(FluxContextWrite.java:136)
+		at reactor.core.publisher.FluxConcatMapNoPrefetch$FluxConcatMapNoPrefetchSubscriber.request(FluxConcatMapNoPrefetch.java:336)
+		at reactor.core.publisher.FluxContextWrite$ContextWriteSubscriber.request(FluxContextWrite.java:136)
+		at reactor.core.publisher.Operators$DeferredSubscription.request(Operators.java:1717)
+		at reactor.core.publisher.FluxRetryWhen$RetryWhenMainSubscriber.onError(FluxRetryWhen.java:192)
+		at reactor.core.publisher.MonoCreate$DefaultMonoSink.error(MonoCreate.java:201)
+		at reactor.netty.http.client.HttpClientConnect$HttpObserver.onUncaughtException(HttpClientConnect.java:403)
+		at reactor.netty.ReactorNetty$CompositeConnectionObserver.onUncaughtException(ReactorNetty.java:703)
+		at reactor.netty.resources.DefaultPooledConnectionProvider$DisposableAcquire.onUncaughtException(DefaultPooledConnectionProvider.java:213)
+		at reactor.netty.resources.DefaultPooledConnectionProvider$PooledConnection.onUncaughtException(DefaultPooledConnectionProvider.java:466)
+		at reactor.netty.http.client.HttpClientOperations.onInboundClose(HttpClientOperations.java:317)
+		at reactor.netty.channel.ChannelOperationsHandler.channelInactive(ChannelOperationsHandler.java:73)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:305)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:281)
+		at io.netty.channel.AbstractChannelHandlerContext.fireChannelInactive(AbstractChannelHandlerContext.java:274)
+		at io.netty.channel.CombinedChannelDuplexHandler$DelegatingChannelHandlerContext.fireChannelInactive(CombinedChannelDuplexHandler.java:418)
+		at io.netty.handler.codec.ByteToMessageDecoder.channelInputClosed(ByteToMessageDecoder.java:411)
+		at io.netty.handler.codec.ByteToMessageDecoder.channelInactive(ByteToMessageDecoder.java:376)
+		at io.netty.handler.codec.http.HttpClientCodec$Decoder.channelInactive(HttpClientCodec.java:328)
+		at io.netty.channel.CombinedChannelDuplexHandler.channelInactive(CombinedChannelDuplexHandler.java:221)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:303)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:281)
+		at io.netty.channel.AbstractChannelHandlerContext.fireChannelInactive(AbstractChannelHandlerContext.java:274)
+		at io.netty.handler.logging.LoggingHandler.channelInactive(LoggingHandler.java:206)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:303)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:281)
+		at io.netty.channel.AbstractChannelHandlerContext.fireChannelInactive(AbstractChannelHandlerContext.java:274)
+		at io.netty.channel.DefaultChannelPipeline$HeadContext.channelInactive(DefaultChannelPipeline.java:1405)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:301)
+		at io.netty.channel.AbstractChannelHandlerContext.invokeChannelInactive(AbstractChannelHandlerContext.java:281)
+		at io.netty.channel.DefaultChannelPipeline.fireChannelInactive(DefaultChannelPipeline.java:901)
+		at io.netty.channel.AbstractChannel$AbstractUnsafe$7.run(AbstractChannel.java:813)
+		at io.netty.util.concurrent.AbstractEventExecutor.runTask(AbstractEventExecutor.java:173)
+		at io.netty.util.concurrent.AbstractEventExecutor.safeExecute(AbstractEventExecutor.java:166)
+		at io.netty.util.concurrent.SingleThreadEventExecutor.runAllTasks(SingleThreadEventExecutor.java:470)
+		at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:566)
+		at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:997)
+		at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+		at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+		at java.base/java.lang.Thread.run(Thread.java:1516)
+Caused by: reactor.netty.http.client.PrematureCloseException: Connection prematurely closed BEFORE response
+2026-06-23T16:19:08.999+03:00 DEBUG reactor.netty.http.client.HttpClient : [61b324f3-1, L:/127.0.0.1:65227 ! R:/127.0.0.1:65223] UNREGISTERED
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Errors: 
+[ERROR]   EngineStubIntegrationTest.testChatSSEStream:95 » IllegalState Timeout on blocking read for 5000000000 NANOSECONDS
+[ERROR]   EngineStubIntegrationTest.testModelsProxy:79 » IllegalState Timeout on blocking read for 5000000000 NANOSECONDS
+[ERROR]   EngineStubIntegrationTest.testWebSocketRelay:111 » IllegalState Timeout on blocking read for 10000000000 NANOSECONDS
+[INFO] 
+[ERROR] Tests run: 3, Failures: 0, Errors: 3, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  28.304 s
+[INFO] Finished at: 2026-06-23T16:19:11+03:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project opentron-java-backend: 
+[ERROR] 
+[ERROR] See C:\Users\ermis\Documents\OpenTron\java\opentron-java\backend\target\surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

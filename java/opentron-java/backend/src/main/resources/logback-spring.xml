@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <property name="LOG_FILE" value="${LOG_FILE:-${LOG_PATH:-${LOG_TEMP:-${java.io.tmpdir:-/tmp}}/}spring.log}"/>
+    <property name="LOG_FILE_MAX_SIZE" value="${LOG_FILE_MAX_SIZE:-10MB}"/>
+    <property name="LOG_FILE_MAX_HISTORY" value="${LOG_FILE_MAX_HISTORY:-0}"/>
+    <property name="LOG_LEVEL_PATTERN" value="%5p"/>
+    <property name="LOG_DATEFORMAT_PATTERN" value="yyyy-MM-dd'T'HH:mm:ss.SSSXXX"/>
+    <property name="LOG_PATTERN" value="%d{${LOG_DATEFORMAT_PATTERN}} ${LOG_LEVEL_PATTERN} %logger{39} : %msg%n${LOG_EXCEPTION_CONVERSION_WORD:-%ex}"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}</file>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_FILE}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <maxFileSize>${LOG_FILE_MAX_SIZE}</maxFileSize>
+            <maxHistory>${LOG_FILE_MAX_HISTORY}</maxHistory>
+        </rollingPolicy>
+    </appender>
+
+    <!-- Structured logging for request/response tracking -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <appender-ref ref="FILE"/>
+    </appender>
+
+    <!-- WebClient and Reactor logs at DEBUG level for diagnostics -->
+    <logger name="reactor.netty.http.client" level="DEBUG"/>
+    <logger name="org.springframework.web.reactive" level="INFO"/>
+    <logger name="org.springframework.web.reactive.function.client" level="DEBUG"/>
+
+    <!-- Application logs -->
+    <logger name="org.opentron.backend" level="INFO"/>
+    <logger name="org.opentron.backend.controllers" level="DEBUG"/>
+    <logger name="org.opentron.backend.websocket" level="DEBUG"/>
+
+    <!-- Spring logs -->
+    <logger name="org.springframework.boot" level="INFO"/>
+    <logger name="org.springframework.core" level="WARN"/>
+
+    <!-- Default root logger -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC_FILE"/>
+    </root>
+
+    <!-- Spring profiles for production/development -->
+    <springProfile name="prod">
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE"/>
+        </root>
+        <logger name="org.opentron.backend" level="INFO"/>
+        <logger name="org.opentron.backend.controllers" level="INFO"/>
+    </springProfile>
+
+    <springProfile name="dev">
+        <root level="DEBUG">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+</configuration>
