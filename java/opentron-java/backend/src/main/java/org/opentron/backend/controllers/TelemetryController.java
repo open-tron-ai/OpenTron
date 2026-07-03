@@ -1,5 +1,6 @@
 package org.opentron.backend.controllers;
 
+import org.opentron.backend.telemetry.TelemetryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
@@ -9,9 +10,11 @@ import java.util.*;
 @RequestMapping("/v1/telemetry")
 public class TelemetryController {
 
-    private static long totalRequests = 0;
-    private static long totalTokens = 0;
-    private static long totalEnergy = 0;
+    private final TelemetryService telemetryService;
+
+    public TelemetryController(TelemetryService telemetryService) {
+        this.telemetryService = telemetryService;
+    }
 
     @GetMapping("/energy")
     public ResponseEntity<Map<String, Object>> getEnergy() {
@@ -25,7 +28,7 @@ public class TelemetryController {
         }
         
         return ResponseEntity.ok(Map.of(
-            "total_energy_j", 1500,
+            "total_energy_j", telemetryService.getTotalEnergyJ(),
             "energy_per_token_j", 0.5,
             "avg_power_w", 15.0,
             "samples", samples
@@ -35,18 +38,24 @@ public class TelemetryController {
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getTelemetryStats() {
         return ResponseEntity.ok(Map.of(
-            "total_requests", totalRequests,
-            "total_tokens", totalTokens
+            "total_requests", telemetryService.getTotalRequests(),
+            "total_tokens", telemetryService.getTotalTokens()
         ));
     }
 
     @PostMapping("/track")
     public ResponseEntity<Map<String, String>> trackTelemetry(@RequestBody Map<String, Object> data) {
-        totalRequests++;
+        telemetryService.recordRequest();
         Object tokens = data.get("tokens");
         if (tokens instanceof Number) {
-            totalTokens += ((Number) tokens).longValue();
+            telemetryService.addTokens(((Number) tokens).longValue());
         }
         return ResponseEntity.ok(Map.of("status", "tracked"));
+    }
+
+    @PostMapping("/reset")
+    public ResponseEntity<Map<String, String>> resetTelemetry() {
+        telemetryService.reset();
+        return ResponseEntity.ok(Map.of("status", "reset"));
     }
 }

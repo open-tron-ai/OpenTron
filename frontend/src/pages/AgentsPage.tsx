@@ -68,6 +68,7 @@ import type { ConnectRequest } from '../types/connectors';
 import { listConnectors, connectSource } from '../lib/connectors-api';
 import type { ToolCallInfo } from '../types';
 import { ToolCallCard } from '../components/Chat/ToolCallCard';
+import { CoordinatorPage } from './CoordinatorPage';
 
 // ---------------------------------------------------------------------------
 // Status helpers
@@ -3429,6 +3430,7 @@ export function AgentsPage() {
   const [channels, setChannels] = useState<ChannelBinding[]>([]);
   const [templates, setTemplates] = useState<AgentTemplate[]>([]);
   const [showWizard, setShowWizard] = useState(false);
+  const [showCoordinator, setShowCoordinator] = useState(false);
   const [detailTab, setDetailTab] = useState<'overview' | 'interact' | 'channels' | 'messaging' | 'tasks' | 'memory' | 'learning' | 'logs'>('interact');
 
   const refresh = useCallback(async () => {
@@ -3551,6 +3553,12 @@ export function AgentsPage() {
         Loading agents...
       </div>
     );
+  }
+
+  // ── Show Coordinator if requested ────────────────────────────────────────────
+
+  if (showCoordinator) {
+    return <CoordinatorPage onBack={() => setShowCoordinator(false)} />;
   }
 
   // ── Detail View ─────────────────────────────────────────────────────────
@@ -3923,8 +3931,19 @@ export function AgentsPage() {
           <h1 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>
             Agents
           </h1>
-          <button
-            onClick={() => agentManagerAvailable && setShowWizard(true)}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCoordinator(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors"
+              style={{
+                background: 'var(--color-accent-purple)',
+                color: 'var(--color-on-accent)',
+              }}
+            >
+              <Brain size={15} /> AI Coordinator
+            </button>
+            <button
+              onClick={() => agentManagerAvailable && setShowWizard(true)}
             disabled={agentManagerAvailable === false}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
@@ -3938,6 +3957,7 @@ export function AgentsPage() {
         <p className="text-sm mt-2 max-w-2xl" style={{ color: 'var(--color-text-secondary)' }}>
           Long-running autonomous agents that can monitor sources, run tasks on a schedule, and message you through connected channels.
         </p>
+	</div>
       </header>
 
       {agentManagerAvailable === false && (

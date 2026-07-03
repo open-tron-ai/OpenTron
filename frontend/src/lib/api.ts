@@ -1,4 +1,4 @@
-import type { ModelInfo, SavingsData, ServerInfo } from '../types';
+﻿import type { ModelInfo, SavingsData, ServerInfo } from '../types';
 
 // Supabase config
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://mtbtgpwzrbostweaanpr.supabase.co';
@@ -340,10 +340,29 @@ export async function synthesizeWithJarvis(text: string): Promise<JarvisSynthesi
   return res.json();
 }
 
-// Agent/Memory types and functions (minimal stubs to prevent import errors)
+// Agent/Memory types
 export interface ManagedAgent {
   id: string;
   name: string;
+  agent_type: string;
+  status: string;
+  template_id: string;
+  instruction: string;
+  model: string;
+  schedule_type: string;
+  schedule_value?: string;
+  tools: string[];
+  input_tokens: number;
+  output_tokens: number;
+  created_at: number;
+  updated_at: number;
+  last_run_at?: number;
+  total_runs: number;
+  total_cost: number;
+  learning_enabled: boolean;
+  summary_memory: string;
+  current_activity?: string;
+  config?: Record<string, any>;
   [key: string]: any;
 }
 
@@ -354,31 +373,56 @@ export interface AgentTask {
 
 export interface ChannelBinding {
   id: string;
+  channel_type: string;
+  routing_mode?: string;
+  config?: Record<string, any>;
   [key: string]: any;
 }
 
 export interface AgentTemplate {
   id: string;
+  name: string;
+  description: string;
   [key: string]: any;
 }
 
 export interface LearningLogEntry {
   id: string;
+  event_type: string;
+  description?: string;
+  created_at: number;
   [key: string]: any;
 }
 
 export interface AgentTrace {
   id: string;
+  started_at: number;
+  duration: number;
+  outcome: string;
+  steps: number;
+  metadata?: Record<string, any>;
   [key: string]: any;
 }
 
 export interface AgentTraceDetail {
   id: string;
+  steps: Array<{
+    step_type: string;
+    input?: Record<string, any>;
+    output?: any;
+    duration?: number;
+  }>;
+  outcome: string;
   [key: string]: any;
 }
 
 export interface ToolInfo {
   name: string;
+  category: string;
+  source?: string;
+  configured: boolean;
+  credential_keys?: string[];
+  description?: string;
   [key: string]: any;
 }
 
@@ -408,40 +452,194 @@ export interface InferenceSource {
   [key: string]: any;
 }
 
-// Placeholder functions for agents/memory to prevent import errors
-export async function fetchManagedAgents(): Promise<ManagedAgent[]> { return []; }
-export async function fetchManagedAgent(id: string): Promise<ManagedAgent> { throw new Error('Not implemented'); }
-export async function createManagedAgent(body: any): Promise<ManagedAgent> { throw new Error('Not implemented'); }
-export async function updateManagedAgent(id: string, body: any): Promise<ManagedAgent> { throw new Error('Not implemented'); }
-export async function deleteManagedAgent(id: string): Promise<void> { }
-export async function pauseManagedAgent(id: string): Promise<void> { }
-export async function resumeManagedAgent(id: string): Promise<void> { }
-export async function runManagedAgent(id: string): Promise<void> { }
-export async function recoverManagedAgent(id: string): Promise<any> { throw new Error('Not implemented'); }
-export async function fetchAgentState(id: string): Promise<any> { throw new Error('Not implemented'); }
+// Managed Agents API
+export async function fetchManagedAgents(): Promise<ManagedAgent[]> {
+  const res = await apiFetch(`/v1/managed-agents`);
+  if (!res.ok) throw new Error(`Failed to fetch agents: ${res.status}`);
+  const data = await res.json();
+  return data.agents || [];
+}
 
-export async function fetchAgentTasks(id: string): Promise<AgentTask[]> { return []; }
-export async function createAgentTask(id: string, desc: string): Promise<AgentTask> { throw new Error('Not implemented'); }
+export async function fetchManagedAgent(id: string): Promise<ManagedAgent> {
+  const res = await apiFetch(`/v1/managed-agents/${id}`);
+  if (!res.ok) throw new Error(`Failed to fetch agent: ${res.status}`);
+  return res.json();
+}
 
-export async function fetchAgentChannels(id: string): Promise<ChannelBinding[]> { return []; }
-export async function bindAgentChannel(id: string, type: string, config?: any): Promise<ChannelBinding> { throw new Error('Not implemented'); }
-export async function unbindAgentChannel(id: string, binding: string): Promise<void> { }
+export async function createManagedAgent(body: any): Promise<ManagedAgent> {
+  const res = await apiFetch(`/v1/managed-agents`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Failed to create agent: ${res.status}`);
+  return res.json();
+}
 
-export async function fetchTemplates(): Promise<AgentTemplate[]> { return []; }
-export async function askAgent(id: string, content: string): Promise<AgentMessage> { throw new Error('Not implemented'); }
-export async function fetchAgentMessages(id: string): Promise<AgentMessage[]> { return []; }
-export async function sendAgentMessage(id: string, content: string, mode?: any, callbacks?: any): Promise<AgentMessage> { throw new Error('Not implemented'); }
+export async function updateManagedAgent(id: string, body: any): Promise<ManagedAgent> {
+  const res = await apiFetch(`/v1/managed-agents/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Failed to update agent: ${res.status}`);
+  return res.json();
+}
 
-export async function fetchErrorAgents(): Promise<ManagedAgent[]> { return []; }
+export async function deleteManagedAgent(id: string): Promise<void> {
+  const res = await apiFetch(`/v1/managed-agents/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`Failed to delete agent: ${res.status}`);
+}
 
-export async function fetchLearningLog(id: string): Promise<LearningLogEntry[]> { return []; }
-export async function triggerLearning(id: string): Promise<void> { }
-export async function fetchAgentTraces(id: string, limit?: number): Promise<AgentTrace[]> { return []; }
-export async function fetchAgentTrace(id: string, traceId: string): Promise<AgentTraceDetail> { throw new Error('Not implemented'); }
+export async function pauseManagedAgent(id: string): Promise<void> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/pause`, { method: 'POST' });
+  if (!res.ok) throw new Error(`Failed to pause agent: ${res.status}`);
+}
 
-export async function fetchAvailableTools(): Promise<ToolInfo[]> { return []; }
-export async function saveToolCredentials(tool: string, creds: any): Promise<void> { }
+export async function resumeManagedAgent(id: string): Promise<void> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/resume`, { method: 'POST' });
+  if (!res.ok) throw new Error(`Failed to resume agent: ${res.status}`);
+}
 
+export async function runManagedAgent(id: string): Promise<void> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/run`, { method: 'POST' });
+  if (!res.ok) throw new Error(`Failed to run agent: ${res.status}`);
+}
+
+export async function recoverManagedAgent(id: string): Promise<any> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/recover`, { method: 'POST' });
+  if (!res.ok) throw new Error(`Failed to recover agent: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchAgentState(id: string): Promise<any> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/state`);
+  if (!res.ok) throw new Error(`Failed to fetch agent state: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchAgentTasks(id: string): Promise<AgentTask[]> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/tasks`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.tasks || [];
+}
+
+export async function createAgentTask(id: string, desc: string): Promise<AgentTask> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/tasks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description: desc }),
+  });
+  if (!res.ok) throw new Error(`Failed to create task: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchAgentChannels(id: string): Promise<ChannelBinding[]> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/channels`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.bindings || [];
+}
+
+export async function bindAgentChannel(id: string, type: string, config?: any): Promise<ChannelBinding> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/channels/bind`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel_type: type, config: config || {} }),
+  });
+  if (!res.ok) throw new Error(`Failed to bind channel: ${res.status}`);
+  return res.json();
+}
+
+export async function unbindAgentChannel(id: string, binding: string): Promise<void> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/channels/${binding}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`Failed to unbind channel: ${res.status}`);
+}
+
+export async function fetchTemplates(): Promise<AgentTemplate[]> {
+  const res = await apiFetch(`/v1/agent-templates`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.templates || [];
+}
+
+export async function askAgent(id: string, content: string): Promise<AgentMessage> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/ask`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question: content }),
+  });
+  if (!res.ok) throw new Error(`Failed to ask agent: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchAgentMessages(id: string): Promise<AgentMessage[]> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/messages`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.messages || [];
+}
+
+export async function sendAgentMessage(id: string, content: string, mode?: any, callbacks?: any): Promise<AgentMessage> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/ask`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question: content, mode, callbacks }),
+  });
+  if (!res.ok) throw new Error(`Failed to send message: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchErrorAgents(): Promise<ManagedAgent[]> {
+  const res = await apiFetch(`/v1/managed-agents?status=error`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.agents || [];
+}
+
+export async function fetchLearningLog(id: string): Promise<LearningLogEntry[]> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/learning`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.logs || [];
+}
+
+export async function triggerLearning(id: string): Promise<void> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/learning/trigger`, { method: 'POST' });
+  if (!res.ok) throw new Error(`Failed to trigger learning: ${res.status}`);
+}
+
+export async function fetchAgentTraces(id: string, limit: number = 50): Promise<AgentTrace[]> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/traces?limit=${limit}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.traces || [];
+}
+
+export async function fetchAgentTrace(id: string, traceId: string): Promise<AgentTraceDetail> {
+  const res = await apiFetch(`/v1/managed-agents/${id}/traces/${traceId}`);
+  if (!res.ok) throw new Error(`Failed to fetch trace: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchAvailableTools(): Promise<ToolInfo[]> {
+  const res = await apiFetch(`/v1/tools`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.tools || [];
+}
+
+export async function saveToolCredentials(tool: string, creds: any): Promise<void> {
+  const res = await apiFetch(`/v1/tools/${tool}/credentials`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(creds),
+  });
+  if (!res.ok) throw new Error(`Failed to save credentials: ${res.status}`);
+}
+
+// Remaining stubs for memory/approval endpoints (not needed for agents to work)
 export async function fetchPendingApprovals(): Promise<PendingApproval[]> { return []; }
 export async function approveAction(id: string): Promise<void> { }
 export async function denyAction(id: string): Promise<void> { }
@@ -482,3 +680,65 @@ export async function sendblueVerify(id: string, secret: string): Promise<any> {
 export async function sendblueRegisterWebhook(id: string, secret: string, url: string): Promise<any> { throw new Error('Not implemented'); }
 export async function sendblueTest(id: string, secret: string, from: string, to: string): Promise<any> { throw new Error('Not implemented'); }
 export async function sendblueHealth(): Promise<any> { throw new Error('Not implemented'); }
+
+// Multi-Agent Coordinator API
+// Multi-Agent Coordinator API with improved error handling
+async function handleApiError(res: Response, action: string): Promise<never> {
+  try {
+    const errorData = await res.json();
+    throw {
+      status: res.status,
+      message: errorData.error || `${action}: ${res.status}`,
+      response: { data: errorData }
+    };
+  } catch (e: any) {
+    if (e.status) throw e;
+    throw {
+      status: res.status,
+      message: `${action}: HTTP ${res.status}`,
+      response: { data: {} }
+    };
+  }
+}
+
+export async function coordinateAgents(request: string, context?: string): Promise<any> {
+  try {
+    const res = await apiFetch(`/v1/agents/coordinate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ request, context: context || '' }),
+    });
+    if (!res.ok) await handleApiError(res, 'Failed to coordinate agents');
+    return res.json();
+  } catch (error: any) {
+    if (error.response) throw error;
+    throw { response: { data: { error: error.message || 'Unknown error' } } };
+  }
+}
+
+export async function getAgentStatuses(): Promise<any> {
+  try {
+    const res = await apiFetch(`/v1/agents/status`);
+    if (!res.ok) await handleApiError(res, 'Failed to get agent statuses');
+    return res.json();
+  } catch (error: any) {
+    if (error.response) throw error;
+    throw { response: { data: { error: error.message || 'Unknown error' } } };
+  }
+}
+
+export async function sendAgentTask(agent: string, task: string): Promise<any> {
+  try {
+    const res = await apiFetch(`/v1/agents/task`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agent, task }),
+    });
+    if (!res.ok) await handleApiError(res, 'Failed to send agent task');
+    return res.json();
+  } catch (error: any) {
+    if (error.response) throw error;
+    throw { response: { data: { error: error.message || 'Unknown error' } } };
+  }
+}
+

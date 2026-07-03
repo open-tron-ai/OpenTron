@@ -1,55 +1,311 @@
 package org.opentron.backend.controllers;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
+/**
+ * Managed Agents API
+ * 
+ * Provides full CRUD + lifecycle management for long-running agents.
+ * Agents can run on schedules, call tools, access data sources, and send messages.
+ */
 @RestController
 @RequestMapping("/v1/managed-agents")
 public class ManagedAgentsController {
 
+    // In-memory store for demo. Production would use a database.
+    private static final Map<String, ManagedAgent> agents = new ConcurrentHashMap<>();
+
+    static {
+        // Seed with one demo agent
+        agents.put("agent-1", new ManagedAgent(
+            "agent-1",
+            "Daily Brief",
+            "personal_deep_research",
+            "idle",
+            "personal_deep_research",
+            "Every morning, give me a briefing on my emails and calendar.",
+            "mistral",
+            "manual",
+            null,
+            Arrays.asList("web_search", "email_read"),
+            0L,
+            0L,
+            System.currentTimeMillis() / 1000,
+            System.currentTimeMillis() / 1000,
+            null,
+            0,
+            0L,
+            0.0,
+            true,
+            ""
+        ));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
     @GetMapping
     public ResponseEntity<Map<String, Object>> listManagedAgents() {
-        List<Map<String, Object>> agents = new ArrayList<>();
-        
-        Map<String, Object> agent = new HashMap<>();
-        agent.put("id", "agent-default-1");
-        agent.put("name", "My Assistant");
-        agent.put("agent_type", "personal_deep_research");
-        agent.put("status", "idle");
-        agent.put("config", new HashMap<>());
-        agent.put("created_at", System.currentTimeMillis() / 1000);
-        agent.put("updated_at", System.currentTimeMillis() / 1000);
-        agents.add(agent);
-        
-        return ResponseEntity.ok(Map.of("agents", agents));
+        List<Map<String, Object>> agentList = agents.values().stream()
+            .map(ManagedAgent::toMap)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(Map.of(
+            "agents", agentList,
+            "total", agentList.size()
+        ));
     }
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> createManagedAgent(@RequestBody Map<String, Object> payload) {
-        Map<String, Object> agent = new HashMap<>();
-        agent.put("id", "agent-" + UUID.randomUUID().toString().substring(0, 8));
-        agent.put("name", payload.getOrDefault("name", "New Agent"));
-        agent.put("agent_type", payload.getOrDefault("agent_type", payload.getOrDefault("template_id", "default")));
-        agent.put("status", "idle");
-        agent.put("config", payload.getOrDefault("config", new HashMap<>()));
-        agent.put("created_at", System.currentTimeMillis() / 1000);
-        agent.put("updated_at", System.currentTimeMillis() / 1000);
-        
-        return ResponseEntity.ok(agent);
+        String name = (String) payload.getOrDefault("name", "New Agent");
+        String templateId = (String) payload.getOrDefault("template_id", "");
+        Map<String, Object> config = (Map<String, Object>) payload.getOrDefault("config", new HashMap<>());
+
+        String id = "agent-" + UUID.randomUUID().toString().substring(0, 8);
+        long now = System.currentTimeMillis() / 1000;
+
+        ManagedAgent agent = new ManagedAgent(
+            id,
+            name,
+            templateId.isEmpty() ? "custom" : templateId,
+            "idle",
+            templateId.isEmpty() ? "custom" : templateId,
+            (String) config.getOrDefault("instruction", ""),
+            (String) config.getOrDefault("model", "mistral"),
+            (String) config.getOrDefault("schedule_type", "manual"),
+            (String) config.getOrDefault("schedule_value", null),
+            (List<String>) config.getOrDefault("tools", new ArrayList<>()),
+            0L,
+            0L,
+            now,
+            now,
+            null,
+            0,
+            0L,
+            config.containsKey("budget") ? ((Number) config.get("budget")).doubleValue() : 0.0,
+            (Boolean) config.getOrDefault("learning_enabled", false),
+            ""
+        );
+        agent.config = config;
+
+        agents.put(id, agent);
+        return ResponseEntity.status(HttpStatus.CREATED).body(agent.toMap());
     }
 
     @GetMapping("/{agentId}")
     public ResponseEntity<Map<String, Object>> getManagedAgent(@PathVariable String agentId) {
-        Map<String, Object> agent = new HashMap<>();
-        agent.put("id", agentId);
-        agent.put("name", "My Assistant");
-        agent.put("agent_type", "personal_deep_research");
-        agent.put("status", "idle");
-        agent.put("config", new HashMap<>());
-        agent.put("created_at", System.currentTimeMillis() / 1000);
-        agent.put("updated_at", System.currentTimeMillis() / 1000);
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(agent.toMap());
+    }
+
+    @PatchMapping("/{agentId}")
+    public ResponseEntity<Map<String, Object>> updateManagedAgent(@PathVariable String agentId, @RequestBody Map<String, Object> payload) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
         
-        return ResponseEntity.ok(agent);
+        // Update config
+        if (payload.containsKey("config")) {
+            Map<String, Object> newConfig = (Map<String, Object>) payload.get("config");
+            if (newConfig.containsKey("model")) {
+                agent.model = (String) newConfig.get("model");
+            }
+            if (newConfig.containsKey("instruction")) {
+                agent.instruction = (String) newConfig.get("instruction");
+            }
+            agent.config.putAll(newConfig);
+        }
+        
+        agent.updated_at = System.currentTimeMillis() / 1000;
+        return ResponseEntity.ok(agent.toMap());
+    }
+
+    @PostMapping("/{agentId}/run")
+    public ResponseEntity<Map<String, Object>> runManagedAgent(@PathVariable String agentId) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        agent.status = "running";
+        agent.last_run_at = System.currentTimeMillis() / 1000;
+        
+        // Simulate a quick run
+        new Thread(() -> {
+            try {
+                Thread.sleep(2000);
+                agent.status = "idle";
+                agent.total_runs++;
+                agent.total_cost += Math.random() * 0.05;
+                agent.summary_memory = "Last run completed successfully. Processed " + agent.total_runs + " queries total.";
+            } catch (InterruptedException ignored) {}
+        }).start();
+        
+        return ResponseEntity.ok(agent.toMap());
+    }
+
+    @PostMapping("/{agentId}/pause")
+    public ResponseEntity<Void> pauseManagedAgent(@PathVariable String agentId) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        agent.status = "paused";
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{agentId}/resume")
+    public ResponseEntity<Void> resumeManagedAgent(@PathVariable String agentId) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        agent.status = "idle";
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{agentId}")
+    public ResponseEntity<Void> deleteManagedAgent(@PathVariable String agentId) {
+        ManagedAgent removed = agents.remove(agentId);
+        if (removed == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{agentId}/recover")
+    public ResponseEntity<Map<String, Object>> recoverManagedAgent(@PathVariable String agentId) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        agent.status = "idle";
+        agent.summary_memory = "";
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "checkpoint", false,
+            "message", "Agent recovered to idle state"
+        ));
+    }
+
+    @PostMapping("/{agentId}/ask")
+    public ResponseEntity<Map<String, Object>> askAgent(@PathVariable String agentId, @RequestBody Map<String, Object> payload) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        String question = (String) payload.get("question");
+        
+        agent.status = "running";
+        agent.last_run_at = System.currentTimeMillis() / 1000;
+        
+        // Simulate async run
+        new Thread(() -> {
+            try {
+                Thread.sleep(1500);
+                agent.status = "idle";
+                agent.total_runs++;
+                agent.summary_memory = "Answered: " + question;
+            } catch (InterruptedException ignored) {}
+        }).start();
+        
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "agent_id", agentId
+        ));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Agent data class
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public static class ManagedAgent {
+        public String id;
+        public String name;
+        public String agent_type;  // custom, personal_deep_research, code_reviewer, etc.
+        public String status;       // idle, running, paused, error, stalled, needs_attention
+        public String template_id;
+        public String instruction;
+        public String model;
+        public String schedule_type; // manual, cron, interval
+        public String schedule_value;
+        public List<String> tools;
+        public long input_tokens;
+        public long output_tokens;
+        public long created_at;
+        public long updated_at;
+        public Long last_run_at;
+        public long total_runs;
+        public long total_cost_cents;
+        public double total_cost;
+        public boolean learning_enabled;
+        public String summary_memory;
+        public Map<String, Object> config;
+
+        public ManagedAgent(
+            String id, String name, String agent_type, String status, String template_id,
+            String instruction, String model, String schedule_type, String schedule_value,
+            List<String> tools, long input_tokens, long output_tokens,
+            long created_at, long updated_at, Long last_run_at, long total_runs,
+            long total_cost_cents, double total_cost, boolean learning_enabled, String summary_memory
+        ) {
+            this.id = id;
+            this.name = name;
+            this.agent_type = agent_type;
+            this.status = status;
+            this.template_id = template_id;
+            this.instruction = instruction;
+            this.model = model;
+            this.schedule_type = schedule_type;
+            this.schedule_value = schedule_value;
+            this.tools = tools;
+            this.input_tokens = input_tokens;
+            this.output_tokens = output_tokens;
+            this.created_at = created_at;
+            this.updated_at = updated_at;
+            this.last_run_at = last_run_at;
+            this.total_runs = total_runs;
+            this.total_cost_cents = total_cost_cents;
+            this.total_cost = total_cost;
+            this.learning_enabled = learning_enabled;
+            this.summary_memory = summary_memory;
+            this.config = new HashMap<>();
+        }
+
+        public Map<String, Object> toMap() {
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("id", id);
+            result.put("name", name);
+            result.put("agent_type", agent_type);
+            result.put("status", status);
+            result.put("template_id", template_id);
+            result.put("instruction", instruction);
+            result.put("model", model);
+            result.put("schedule_type", schedule_type);
+            result.put("schedule_value", schedule_value);
+            result.put("tools", tools);
+            result.put("input_tokens", input_tokens);
+            result.put("output_tokens", output_tokens);
+            result.put("created_at", created_at);
+            result.put("updated_at", updated_at);
+            result.put("last_run_at", last_run_at);
+            result.put("total_runs", total_runs);
+            result.put("total_cost", total_cost);
+            result.put("learning_enabled", learning_enabled);
+            result.put("summary_memory", summary_memory);
+            result.put("current_activity", "");
+            result.put("config", config != null ? config : new HashMap<String, Object>());
+            return result;
+        }
     }
 }

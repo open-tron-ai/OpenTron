@@ -10,6 +10,31 @@ export interface ChatRequest {
 }
 
 /**
+ * Collect cloud provider API keys from localStorage
+ */
+function getCloudApiKeys(): Record<string, string> {
+  const keys: Record<string, string> = {};
+  
+  try {
+    const openaiKey = localStorage.getItem('OpenTron-openai-key');
+    if (openaiKey) keys.openai = openaiKey;
+    
+    const anthropicKey = localStorage.getItem('OpenTron-anthropic-key');
+    if (anthropicKey) keys.anthropic = anthropicKey;
+    
+    const geminiKey = localStorage.getItem('OpenTron-gemini-key');
+    if (geminiKey) keys.google = geminiKey;
+    
+    const openrouterKey = localStorage.getItem('OpenTron-openrouter-key');
+    if (openrouterKey) keys.openrouter = openrouterKey;
+  } catch (e) {
+    console.error('[getCloudApiKeys] Error reading API keys from localStorage:', e);
+  }
+  
+  return keys;
+}
+
+/**
  * Simple non-streaming chat completion.
  * Returns the full response at once (no SSE parsing).
  */
@@ -21,9 +46,17 @@ export async function chatCompletionSimple(
   console.log('[chatCompletionSimple] Sending request to:', `${base}/v1/chat/completions`);
   console.log('[chatCompletionSimple] Request:', request);
 
+  const apiKeys = getCloudApiKeys();
+  const headers = authHeaders({ 'Content-Type': 'application/json' });
+  
+  if (Object.keys(apiKeys).length > 0) {
+    headers['X-API-Keys'] = JSON.stringify(apiKeys);
+    console.log('[chatCompletionSimple] Sending API keys for:', Object.keys(apiKeys).join(', '));
+  }
+
   const response = await fetch(`${base}/v1/chat/completions`, {
     method: 'POST',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    headers,
     body: JSON.stringify({ ...request, stream: false }),
     signal,
   });
@@ -49,9 +82,17 @@ export async function* streamChat(
   console.log('[streamChat] Connecting to:', `${base}/v1/chat/completions`);
   console.log('[streamChat] Request:', request);
   
+  const apiKeys = getCloudApiKeys();
+  const headers = authHeaders({ 'Content-Type': 'application/json' });
+  
+  if (Object.keys(apiKeys).length > 0) {
+    headers['X-API-Keys'] = JSON.stringify(apiKeys);
+    console.log('[streamChat] Sending API keys for:', Object.keys(apiKeys).join(', '));
+  }
+  
   const response = await fetch(`${base}/v1/chat/completions`, {
     method: 'POST',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    headers,
     body: JSON.stringify(request),
     signal,
   });

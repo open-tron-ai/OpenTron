@@ -2,28 +2,44 @@ package org.opentron.backend.telemetry;
 
 import org.springframework.stereotype.Service;
 
-import java.util.concurrent.atomic.AtomicLong;
-
+/**
+ * TelemetryService now delegates to PersistentTelemetryStore.
+ * All data is persisted to disk automatically.
+ */
 @Service
 public class TelemetryService {
 
-    private final AtomicLong totalRequests = new AtomicLong(0);
-    private final AtomicLong totalTokens = new AtomicLong(0);
-    private final AtomicLong totalEnergyJ = new AtomicLong(0);
+    private final PersistentTelemetryStore store;
+
+    public TelemetryService(PersistentTelemetryStore store) {
+        this.store = store;
+    }
 
     public void recordRequest() {
-        totalRequests.incrementAndGet();
+        store.recordRequest();
     }
 
     public void addTokens(long tokens) {
-        totalTokens.addAndGet(tokens);
+        store.addTokens(tokens);
     }
 
     public void addEnergyJ(long j) {
-        totalEnergyJ.addAndGet(j);
+        store.addEnergyJ(j);
     }
 
-    public long getTotalRequests() { return totalRequests.get(); }
-    public long getTotalTokens() { return totalTokens.get(); }
-    public long getTotalEnergyJ() { return totalEnergyJ.get(); }
+    public long getTotalRequests() {
+        return store.getTotalRequests();
+    }
+
+    public long getTotalTokens() {
+        return store.getTotalTokens();
+    }
+
+    public long getTotalEnergyJ() {
+        return store.getTotalEnergyJ();
+    }
+
+    public void reset() {
+        store.reset();
+    }
 }
