@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Zap,
   Activity,
@@ -43,34 +43,30 @@ export function SystemPanel() {
   const [energy, setEnergy] = useState<EnergyData | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryStats | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const base = getBase();
-      const [energyRes, telRes] = await Promise.allSettled([
-        fetch(`${base}/v1/telemetry/energy`).then((r) => (r.ok ? r.json() : null)),
-        fetch(`${base}/v1/telemetry/stats`).then((r) => (r.ok ? r.json() : null)),
-      ]);
-      if (energyRes.status === 'fulfilled' && energyRes.value) {
-        setEnergy(energyRes.value as EnergyData);
-      }
-      if (telRes.status === 'fulfilled' && telRes.value) {
-        setTelemetry(telRes.value as TelemetryStats);
-      }
-    } catch {
-      // best-effort
-    }
-  }, []);
-
+  // Simple polling without callbacks to avoid infinite loops
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const base = getBase();
+        const [energyRes, telRes] = await Promise.allSettled([
+          fetch(`${base}/v1/telemetry/energy`).then((r) => (r.ok ? r.json() : null)),
+          fetch(`${base}/v1/telemetry/stats`).then((r) => (r.ok ? r.json() : null)),
+        ]);
+        if (energyRes.status === 'fulfilled' && energyRes.value) {
+          setEnergy(energyRes.value as EnergyData);
+        }
+        if (telRes.status === 'fulfilled' && telRes.value) {
+          setTelemetry(telRes.value as TelemetryStats);
+        }
+      } catch {
+        // best-effort
+      }
+    };
+
     fetchData();
-    const interval = setInterval(fetchData, 3000);
+    const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
-  }, [fetchData]);
-
-  // Re-fetch energy/telemetry when savings updates (after a chat message)
-  useEffect(() => {
-    if (savings) fetchData();
-  }, [savings, fetchData]);
+  }, []);
 
   const promptK = (savings?.total_prompt_tokens ?? 0) / 1000;
   const completionK = (savings?.total_completion_tokens ?? 0) / 1000;
@@ -110,8 +106,8 @@ export function SystemPanel() {
             Session
           </h4>
           <div className="grid grid-cols-2 gap-2">
-            <MiniStat icon={Hash} label="Requests" value={String(savings?.total_calls ?? telemetry?.total_requests ?? 0)} />
-            <MiniStat icon={Hash} label="Output Tokens" value={formatNumber(savings?.total_completion_tokens ?? telemetry?.total_tokens ?? 0)} />
+            <MiniStat icon={Hash} label="Requests" value={String(telemetry?.total_requests ?? savings?.total_calls ?? 0)} />
+            <MiniStat icon={Hash} label="Output Tokens" value={formatNumber(telemetry?.total_tokens ?? savings?.total_completion_tokens ?? 0)} />
           </div>
         </section>
 
@@ -313,4 +309,3 @@ function formatNumber(n: number): string {
   if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
   return String(n);
 }
-

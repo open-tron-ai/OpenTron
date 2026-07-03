@@ -1,6 +1,7 @@
 import { EnergyDashboard } from '../components/Dashboard/EnergyDashboard';
 import { CostComparison } from '../components/Dashboard/CostComparison';
 import { TraceDebugger } from '../components/Dashboard/TraceDebugger';
+import { StorageDashboard } from '../components/StorageDashboard';
 
 export function DashboardPage() {
   const now = new Date();
@@ -29,6 +30,13 @@ export function DashboardPage() {
         </div>
 
         <TraceDebugger />
+
+        <div className="mt-8 pt-8 border-t" style={{ borderColor: 'var(--color-border)' }}>
+          <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
+            Database Storage
+          </h2>
+          <StorageDashboard />
+        </div>
       </div>
     </div>
   );

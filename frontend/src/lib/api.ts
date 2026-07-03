@@ -742,3 +742,107 @@ export async function sendAgentTask(agent: string, task: string): Promise<any> {
   }
 }
 
+// PostgreSQL Storage API
+export async function getStorageStats(): Promise<any> {
+  try {
+    const res = await apiFetch(`/v1/agents/storage/stats`);
+    if (!res.ok) throw new Error(`Failed to fetch storage stats: ${res.status}`);
+    return res.json();
+  } catch (error: any) {
+    console.error('[API] Error fetching storage stats:', error);
+    return { total_memories: 0, total_traces: 0, backend: 'postgresql', error: error.message };
+  }
+}
+
+export async function getStorageTraces(agentId: string, limit: number = 50): Promise<any> {
+  try {
+    const res = await apiFetch(`/v1/agents/storage/traces/${agentId}?limit=${limit}`);
+    if (!res.ok) throw new Error(`Failed to fetch storage traces: ${res.status}`);
+    return res.json();
+  } catch (error: any) {
+    console.error('[API] Error fetching storage traces:', error);
+    return { traces: [], count: 0, error: error.message };
+  }
+}
+
+export async function getMemoryStatsDetailed(): Promise<any> {
+  try {
+    const res = await apiFetch(`/v1/memory/stats/detailed`);
+    if (!res.ok) throw new Error(`Failed to fetch memory stats: ${res.status}`);
+    return res.json();
+  } catch (error: any) {
+    console.error('[API] Error fetching memory stats:', error);
+    return { total_memories: 0, total_traces: 0, backend: 'postgresql', error: error.message };
+  }
+}
+
+export async function storeAgentMemory(agentName: string, content: string, summary?: string): Promise<any> {
+  try {
+    const res = await apiFetch(`/v1/memory/store`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agent_name: agentName, content, summary: summary || '' }),
+    });
+    if (!res.ok) throw new Error(`Failed to store memory: ${res.status}`);
+    return res.json();
+  } catch (error: any) {
+    console.error('[API] Error storing memory:', error);
+    throw error;
+  }
+}
+
+export async function searchAgentMemory(query: string, agentName?: string, topK: number = 5): Promise<any> {
+  try {
+    const res = await apiFetch(`/v1/memory/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, agent_name: agentName || '', top_k: topK }),
+    });
+    if (!res.ok) throw new Error(`Failed to search memory: ${res.status}`);
+    return res.json();
+  } catch (error: any) {
+    console.error('[API] Error searching memory:', error);
+    return { results: [], error: error.message };
+  }
+}
+
+export async function getAgentMemory(agentId: string, limit: number = 50): Promise<any> {
+  try {
+    const res = await apiFetch(`/v1/memory/agent/${agentId}?limit=${limit}`);
+    if (!res.ok) throw new Error(`Failed to fetch agent memory: ${res.status}`);
+    return res.json();
+  } catch (error: any) {
+    console.error('[API] Error fetching agent memory:', error);
+    return { memories: [], count: 0, error: error.message };
+  }
+}
+
+export async function getAgentTraces(agentId: string, limit: number = 50): Promise<any> {
+  try {
+    const res = await apiFetch(`/v1/traces/agent/${agentId}?limit=${limit}`);
+    if (!res.ok) throw new Error(`Failed to fetch agent traces: ${res.status}`);
+    return res.json();
+  } catch (error: any) {
+    console.error('[API] Error fetching agent traces:', error);
+    return { traces: [], count: 0, error: error.message };
+  }
+}
+
+export async function analyzeScreenshot(imageBase64: string, question: string = 'Analyze this screenshot and suggest improvements', context: string = ''): Promise<any> {
+  try {
+    const res = await apiFetch('/v1/analyze-screenshot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        image_base64: imageBase64, 
+        question, 
+        context 
+      }),
+    });
+    if (!res.ok) throw new Error(`Screenshot analysis failed: ${res.status}`);
+    return res.json();
+  } catch (error: any) {
+    console.error('[API] Screenshot analysis error:', error);
+    throw error;
+  }
+}

@@ -1,14 +1,16 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Send, Square, Paperclip, Search } from 'lucide-react';
+import { Send, Square, Paperclip, Search, Bot } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore, generateId } from '../../lib/store';
 import { streamChat, streamResearch, chatCompletionSimple } from '../../lib/sse';
-import { fetchSavings, getBase } from '../../lib/api';
+import { fetchSavings, getBase, coordinateAgents } from '../../lib/api';
+import { parseCoordinatorResponse } from '../../lib/coordinator-helpers';
 import { listConnectors, getSyncStatus } from '../../lib/connectors-api';
 import { MicButton } from './MicButton';
 import { useSpeech } from '../../hooks/useSpeech';
 import { AvatarOrb } from './AvatarOrb';
 import { getChatAvatarState } from './ChatVoiceIntegration';
+
 import type {
   ChatMessage,
   MessageTelemetry,
@@ -18,10 +20,6 @@ import type {
   ToolCallInfo,
 } from '../../types';
 
-// While Deep Research is toggled on, poll connected sources for sync
-// progress so we can surface "Searching over N items – sync in progress"
-// next to the toggle. Polling is gated on `enabled` so toggling DR off
-// stops the network chatter immediately.
 function useResearchCorpusSync(enabled: boolean): {
   syncing: boolean;
   itemsSynced: number;
@@ -61,7 +59,7 @@ function useResearchCorpusSync(enabled: boolean): {
         }
         if (!cancelled) setState({ syncing, itemsSynced });
       } catch {
-        // Network blip – leave previous state intact.
+        // Network blip - leave previous state intact.
       }
     };
 
@@ -78,9 +76,11 @@ function useResearchCorpusSync(enabled: boolean): {
 
 export function InputArea() {
   const [input, setInput] = useState('');
+  const [useTronMode, setUseTronMode] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
 
   const activeId = useAppStore((s) => s.activeId);
   const selectedModel = useAppStore((s) => s.selectedModel);
@@ -107,8 +107,6 @@ export function InputArea() {
     stopRecording,
   } = useSpeech();
 
-  // Abort in-flight stream when the user switches models mid-generation.
-  // This prevents errors from trying to continue a stream with a stale model.
   const prevModelRef = useRef(selectedModel);
   useEffect(() => {
     if (prevModelRef.current !== selectedModel && streamState.isStreaming) {
@@ -170,7 +168,7 @@ export function InputArea() {
   const sendMessage = useCallback(async () => {
     const content = input.trim();
     if (!content || streamState.isStreaming) return;
-    if (!selectedModel) {
+    if (!useTronMode && !selectedModel) {
       toast.error('Pick a model first (?K)');
       return;
     }
@@ -179,7 +177,7 @@ export function InputArea() {
 
     let convId = activeId;
     if (!convId) {
-      convId = createConversation(selectedModel);
+      convId = createConversation(useTronMode ? 'Tron' : selectedModel);
     }
 
     const userMsg: ChatMessage = {
@@ -190,23 +188,15 @@ export function InputArea() {
     };
     addMessage(convId, userMsg);
 
-    // Build API messages before adding assistant placeholder
-    const currentMessages = useAppStore.getState().messages;
-    const apiMessages = currentMessages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
-
     const assistantMsg: ChatMessage = {
       id: generateId(),
       role: 'assistant',
       content: '',
       timestamp: Date.now(),
-      isResearch: deepResearch || undefined,
+      isResearch: !useTronMode && (deepResearch || undefined),
     };
     addMessage(convId, assistantMsg);
 
-    // Start streaming
     const startTime = Date.now();
     const timer = setInterval(() => {
       setStreamState({ elapsedMs: Date.now() - startTime });
@@ -218,90 +208,115 @@ export function InputArea() {
 
     let accumulatedContent = '';
     let usage: TokenUsage | undefined;
-    let complexity: { score: number; tier: string; suggested_max_tokens: number } | undefined;
-    const toolCalls: ToolCallInfo[] = [];
-    const researchTraces: ResearchSearchTrace[] = [];
-    const researchSourcesByRef = new Map<number, ResearchSource>();
-    const flushSources = () =>
-      Array.from(researchSourcesByRef.values()).sort((a, b) => a.ref - b.ref);
-    let lastFlush = 0;
     let ttftMs: number | undefined;
 
-    setStreamState({
-      isStreaming: true,
-      phase: deepResearch ? 'Researching...' : 'Generating...',
-      elapsedMs: 0,
-      activeToolCalls: [],
-      content: '',
-    });
-    useAppStore.getState().addLogEntry({
-      timestamp: Date.now(),
-      level: 'info',
-      category: 'chat',
-      message: deepResearch
-        ? `Research: "${content.slice(0, 80)}${content.length > 80 ? '...' : ''}"`
-        : `Request: "${content.slice(0, 80)}${content.length > 80 ? '...' : ''}" – ${selectedModel}`,
-    });
-
     try {
-      if (deepResearch) {
-        for await (const ev of streamResearch(content, controller.signal)) {
-          if (ev.type === 'search_call') {
-            const trace: ResearchSearchTrace = {
-              id: generateId(),
-              query: ev.arguments?.query ?? '',
-              person: ev.arguments?.person,
-              timeRange: ev.arguments?.time_range,
-              status: 'pending',
-            };
-            researchTraces.push(trace);
-            setStreamState({ phase: `Searching: ${trace.query}` });
-            updateLastAssistant(
-              convId,
-              accumulatedContent,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              [...researchTraces],
-              flushSources(),
-            );
-            useAppStore.getState().addLogEntry({
-              timestamp: Date.now(),
-              level: 'info',
-              category: 'tool',
-              message: `Search: "${trace.query}"${trace.person ? ` (person: ${trace.person})` : ''}`,
-            });
-          } else if (ev.type === 'search_result') {
-            const pending = [...researchTraces].reverse().find((t) => t.status === 'pending');
-            if (pending) {
-              pending.status = 'complete';
-              pending.numHits = ev.num_hits;
-              pending.topTitles = ev.top_titles;
-            }
-            if (ev.sources) {
-              for (const src of ev.sources) {
-                if (src && typeof src.ref === 'number' && !researchSourcesByRef.has(src.ref)) {
-                  researchSourcesByRef.set(src.ref, src);
-                }
-              }
-            }
-            updateLastAssistant(
-              convId,
-              accumulatedContent,
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              [...researchTraces],
-              flushSources(),
-            );
-          } else if (ev.type === 'synthesis') {
-            if (!ttftMs) ttftMs = Date.now() - startTime;
-            accumulatedContent += ev.text;
-            setStreamState({ content: accumulatedContent, phase: '' });
-            const now = Date.now();
-            if (now - lastFlush >= 80) {
+      if (useTronMode) {
+        // === TRON COORDINATOR MODE ===
+        setStreamState({
+          isStreaming: true,
+          phase: 'Coordinating with specialists...',
+          elapsedMs: 0,
+          activeToolCalls: [],
+          content: '',
+        });
+
+        useAppStore.getState().addLogEntry({
+          timestamp: Date.now(),
+          level: 'info',
+          category: 'chat',
+          message: `Tron: "${content.slice(0, 80)}${content.length > 80 ? '...' : ''}"`,
+        });
+
+        try {
+          ttftMs = Date.now() - startTime;
+          const coordinatorResponse = await coordinateAgents(content, '');
+          const parsed = parseCoordinatorResponse(coordinatorResponse);
+          
+          accumulatedContent = parsed.tronResponse;
+
+          useAppStore.getState().addLogEntry({
+            timestamp: Date.now(),
+            level: 'info',
+            category: 'chat',
+            message: `Tron used: ${parsed.agentsUsed.join(', ') || 'specialist agents'} in ${parsed.elapsedMs}ms`,
+          });
+
+          const telemetry: MessageTelemetry = {
+            engine: 'tron-coordinator',
+            model_id: `Tron (${parsed.agentsUsed.join(', ') || 'specialist agents'})`,
+            total_ms: parsed.elapsedMs,
+            ttft_ms: ttftMs,
+          };
+
+          setStreamState({ content: accumulatedContent, phase: '' });
+          updateLastAssistant(
+            convId,
+            accumulatedContent,
+            undefined,
+            undefined,
+            telemetry,
+            undefined,
+          );
+        } catch (err: any) {
+          console.error('[InputArea] Coordinator error:', err);
+          const errMsg = err?.response?.data?.error || err?.message || String(err);
+          accumulatedContent = `Error coordinating with Tron: ${errMsg}`;
+          setStreamState({ content: accumulatedContent, phase: '' });
+          updateLastAssistant(convId, accumulatedContent);
+          useAppStore.getState().addLogEntry({
+            timestamp: Date.now(),
+            level: 'error',
+            category: 'chat',
+            message: `Tron error: ${errMsg}`,
+          });
+          toast.error(errMsg, { duration: 8000 });
+        }
+      } else {
+        // === REGULAR CHAT MODE (Original behavior) ===
+        const currentMessages = useAppStore.getState().messages;
+        const apiMessages = currentMessages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
+
+        let complexity: { score: number; tier: string; suggested_max_tokens: number } | undefined;
+        const toolCalls: ToolCallInfo[] = [];
+        const researchTraces: ResearchSearchTrace[] = [];
+        const researchSourcesByRef = new Map<number, ResearchSource>();
+        const flushSources = () =>
+          Array.from(researchSourcesByRef.values()).sort((a, b) => a.ref - b.ref);
+        let lastFlush = 0;
+
+        setStreamState({
+          isStreaming: true,
+          phase: deepResearch ? 'Researching...' : 'Generating...',
+          elapsedMs: 0,
+          activeToolCalls: [],
+          content: '',
+        });
+
+        useAppStore.getState().addLogEntry({
+          timestamp: Date.now(),
+          level: 'info',
+          category: 'chat',
+          message: deepResearch
+            ? `Research: "${content.slice(0, 80)}${content.length > 80 ? '...' : ''}"`
+            : `Request: "${content.slice(0, 80)}${content.length > 80 ? '...' : ''}" - ${selectedModel}`,
+        });
+
+        if (deepResearch) {
+          for await (const ev of streamResearch(content, controller.signal)) {
+            if (ev.type === 'search_call') {
+              const trace: ResearchSearchTrace = {
+                id: generateId(),
+                query: ev.arguments?.query ?? '',
+                person: ev.arguments?.person,
+                timeRange: ev.arguments?.time_range,
+                status: 'pending',
+              };
+              researchTraces.push(trace);
+              setStreamState({ phase: `Searching: ${trace.query}` });
               updateLastAssistant(
                 convId,
                 accumulatedContent,
@@ -312,120 +327,207 @@ export function InputArea() {
                 [...researchTraces],
                 flushSources(),
               );
-              lastFlush = now;
-            }
-          } else if (ev.type === 'system_metrics') {
-            useAppStore.getState().setLiveEnergy({
-              power_w: ev.power_w,
-              energy_j: ev.energy_j,
-              duration_s: ev.duration_s,
-            });
-          } else if (ev.type === 'error') {
-            const msg = ev.message || 'Research failed (no detail provided)';
-            accumulatedContent = accumulatedContent
-              ? `${accumulatedContent}\n\n**Research stopped:** ${msg}`
-              : `**Research failed:** ${msg}`;
-            setStreamState({ content: accumulatedContent, phase: '' });
-            useAppStore.getState().addLogEntry({
-              timestamp: Date.now(),
-              level: 'error',
-              category: 'chat',
-              message: `Deep Research error: ${msg}`,
-            });
-            toast.error(msg, { duration: 8000 });
-          } else if (ev.type === 'done') {
-            if (ev.usage) {
-              usage = {
-                prompt_tokens: ev.usage.prompt_tokens ?? 0,
-                completion_tokens: ev.usage.completion_tokens ?? 0,
-                total_tokens:
-                  ev.usage.total_tokens ??
-                  (ev.usage.prompt_tokens ?? 0) +
-                    (ev.usage.completion_tokens ?? 0),
-              };
-              useAppStore.getState().incrementSavings(usage);
-            }
-            window.setTimeout(() => {
-              useAppStore.getState().setLiveEnergy(null);
-            }, 1500);
-            break;
-          }
-        }
-      } else {
-        for await (const sseEvent of streamChat(
-          { model: selectedModel, messages: apiMessages, stream: true, temperature, max_tokens: maxTokens },
-          controller.signal,
-        )) {
-          const eventName = sseEvent.event;
-
-          if (eventName === 'agent_turn_start') {
-            setStreamState({ phase: 'Agent thinking...' });
-          } else if (eventName === 'inference_start') {
-            setStreamState({ phase: 'Generating...' });
-            useAppStore.getState().addLogEntry({
-              timestamp: Date.now(), level: 'info', category: 'chat',
-              message: `Generating with ${selectedModel}...`,
-            });
-          } else if (eventName === 'tool_call_start') {
-            try {
-              const data = JSON.parse(sseEvent.data);
-              const tc: ToolCallInfo = {
-                id: generateId(),
-                tool: data.tool,
-                arguments: data.arguments || '',
-                status: 'running',
-              };
-              toolCalls.push(tc);
-              setStreamState({
-                phase: `Calling ${data.tool}...`,
-                activeToolCalls: [...toolCalls],
-              });
-              updateLastAssistant(convId, accumulatedContent, [...toolCalls]);
-              useAppStore.getState().addLogEntry({
-                timestamp: Date.now(), level: 'info', category: 'tool',
-                message: `Calling ${data.tool}(${data.arguments || ''})`,
-              });
-            } catch {}
-          } else if (eventName === 'tool_call_end') {
-            try {
-              const data = JSON.parse(sseEvent.data);
-              const tc = toolCalls.find(
-                (t) => t.tool === data.tool && t.status === 'running',
-              );
-              if (tc) {
-                tc.status = data.success ? 'success' : 'error';
-                tc.latency = data.latency;
-                tc.result = data.result;
+            } else if (ev.type === 'search_result') {
+              const pending = [...researchTraces].reverse().find((t) => t.status === 'pending');
+              if (pending) {
+                pending.status = 'complete';
+                pending.numHits = ev.num_hits;
+                pending.topTitles = ev.top_titles;
               }
-              setStreamState({
-                phase: 'Generating...',
-                activeToolCalls: [...toolCalls],
-              });
-              updateLastAssistant(convId, accumulatedContent, [...toolCalls]);
-            } catch {}
-          } else {
-            try {
-              const data = JSON.parse(sseEvent.data);
-              const delta = data.choices?.[0]?.delta;
-              if (data.usage) usage = data.usage;
-              if (data.complexity) complexity = data.complexity;
-              if (delta?.content) {
-                if (!ttftMs) ttftMs = Date.now() - startTime;
-                accumulatedContent += delta.content;
-                setStreamState({ content: accumulatedContent, phase: '' });
-
-                const now = Date.now();
-                if (now - lastFlush >= 80) {
-                  updateLastAssistant(
-                    convId,
-                    accumulatedContent,
-                    toolCalls.length > 0 ? [...toolCalls] : undefined,
-                  );
-                  lastFlush = now;
+              if (ev.sources) {
+                for (const src of ev.sources) {
+                  if (src && typeof src.ref === 'number' && !researchSourcesByRef.has(src.ref)) {
+                    researchSourcesByRef.set(src.ref, src);
+                  }
                 }
               }
-            } catch {}
+              updateLastAssistant(
+                convId,
+                accumulatedContent,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                [...researchTraces],
+                flushSources(),
+              );
+            } else if (ev.type === 'synthesis') {
+              if (!ttftMs) ttftMs = Date.now() - startTime;
+              accumulatedContent += ev.text;
+              setStreamState({ content: accumulatedContent, phase: '' });
+              const now = Date.now();
+              if (now - lastFlush >= 80) {
+                updateLastAssistant(
+                  convId,
+                  accumulatedContent,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  [...researchTraces],
+                  flushSources(),
+                );
+                lastFlush = now;
+              }
+            } else if (ev.type === 'system_metrics') {
+              useAppStore.getState().setLiveEnergy({
+                power_w: ev.power_w,
+                energy_j: ev.energy_j,
+                duration_s: ev.duration_s,
+              });
+            } else if (ev.type === 'error') {
+              const msg = ev.message || 'Research failed (no detail provided)';
+              accumulatedContent = accumulatedContent
+                ? `${accumulatedContent}\n\n**Research stopped:** ${msg}`
+                : `**Research failed:** ${msg}`;
+              setStreamState({ content: accumulatedContent, phase: '' });
+              useAppStore.getState().addLogEntry({
+                timestamp: Date.now(),
+                level: 'error',
+                category: 'chat',
+                message: `Deep Research error: ${msg}`,
+              });
+              toast.error(msg, { duration: 8000 });
+            } else if (ev.type === 'done') {
+              if (ev.usage) {
+                usage = {
+                  prompt_tokens: ev.usage.prompt_tokens ?? 0,
+                  completion_tokens: ev.usage.completion_tokens ?? 0,
+                  total_tokens:
+                    ev.usage.total_tokens ??
+                    (ev.usage.prompt_tokens ?? 0) +
+                      (ev.usage.completion_tokens ?? 0),
+                };
+                useAppStore.getState().incrementSavings(usage);
+              }
+              window.setTimeout(() => {
+                useAppStore.getState().setLiveEnergy(null);
+              }, 1500);
+              break;
+            }
           }
+        } else {
+          for await (const sseEvent of streamChat(
+            { model: selectedModel, messages: apiMessages, stream: true, temperature, max_tokens: maxTokens },
+            controller.signal,
+          )) {
+            const eventName = sseEvent.event;
+
+            if (eventName === 'agent_turn_start') {
+              setStreamState({ phase: 'Agent thinking...' });
+            } else if (eventName === 'inference_start') {
+              setStreamState({ phase: 'Generating...' });
+              useAppStore.getState().addLogEntry({
+                timestamp: Date.now(), level: 'info', category: 'chat',
+                message: `Generating with ${selectedModel}...`,
+              });
+            } else if (eventName === 'tool_call_start') {
+              try {
+                const data = JSON.parse(sseEvent.data);
+                const tc: ToolCallInfo = {
+                  id: generateId(),
+                  tool: data.tool,
+                  arguments: data.arguments || '',
+                  status: 'running',
+                };
+                toolCalls.push(tc);
+                setStreamState({
+                  phase: `Calling ${data.tool}...`,
+                  activeToolCalls: [...toolCalls],
+                });
+                updateLastAssistant(convId, accumulatedContent, [...toolCalls]);
+                useAppStore.getState().addLogEntry({
+                  timestamp: Date.now(), level: 'info', category: 'tool',
+                  message: `Calling ${data.tool}(${data.arguments || ''})`,
+                });
+              } catch {}
+            } else if (eventName === 'tool_call_end') {
+              try {
+                const data = JSON.parse(sseEvent.data);
+                const tc = toolCalls.find(
+                  (t) => t.tool === data.tool && t.status === 'running',
+                );
+                if (tc) {
+                  tc.status = data.success ? 'success' : 'error';
+                  tc.latency = data.latency;
+                  tc.result = data.result;
+                }
+                setStreamState({
+                  phase: 'Generating...',
+                  activeToolCalls: [...toolCalls],
+                });
+                updateLastAssistant(convId, accumulatedContent, [...toolCalls]);
+              } catch {}
+            } else {
+              try {
+                const data = JSON.parse(sseEvent.data);
+                const delta = data.choices?.[0]?.delta;
+                if (data.usage) usage = data.usage;
+                if (data.complexity) complexity = data.complexity;
+                if (delta?.content) {
+                  if (!ttftMs) ttftMs = Date.now() - startTime;
+                  accumulatedContent += delta.content;
+                  setStreamState({ content: accumulatedContent, phase: '' });
+
+                  const now = Date.now();
+                  if (now - lastFlush >= 80) {
+                    updateLastAssistant(
+                      convId,
+                      accumulatedContent,
+                      toolCalls.length > 0 ? [...toolCalls] : undefined,
+                    );
+                    lastFlush = now;
+                  }
+                }
+              } catch {}
+            }
+          }
+        }
+
+        const totalMs = Date.now() - startTime;
+        const _CLOUD_PREFIXES = ['gpt-', 'o1-', 'o3-', 'o4-', 'claude-', 'gemini-', 'openrouter/', 'MiniMax-', 'chatgpt-'];
+        const engineLabel = _CLOUD_PREFIXES.some(p => selectedModel.startsWith(p)) ? 'cloud' : 'ollama';
+        const telemetry: MessageTelemetry = {
+          engine: engineLabel,
+          model_id: selectedModel,
+          total_ms: totalMs,
+          ttft_ms: ttftMs,
+          tokens_per_sec: usage?.completion_tokens
+            ? usage.completion_tokens / (totalMs / 1000)
+            : undefined,
+          complexity_score: complexity?.score,
+          complexity_tier: complexity?.tier,
+          suggested_max_tokens: complexity?.suggested_max_tokens,
+        };
+
+        let audioMeta: { url: string } | undefined;
+        try {
+          const digestRes = await fetch(`${getBase()}/api/digest`);
+          if (digestRes.ok) {
+            const digest = await digestRes.json();
+            if (digest.audio_available) {
+              audioMeta = { url: `${getBase()}/api/digest/audio` };
+            }
+          }
+        } catch {
+          // Not a digest response or server unavailable
+        }
+
+        updateLastAssistant(
+          convId,
+          accumulatedContent,
+          toolCalls.length > 0 ? toolCalls : undefined,
+          usage,
+          telemetry,
+          audioMeta,
+          researchTraces.length > 0 ? researchTraces : undefined,
+          researchSourcesByRef.size > 0 ? flushSources() : undefined,
+        );
+
+        if (!deepResearch) {
+          fetchSavings()
+            .then((data) => useAppStore.getState().setSavings(data))
+            .catch(() => {});
         }
       }
     } catch (err: any) {
@@ -433,8 +535,7 @@ export function InputArea() {
         if (!accumulatedContent) accumulatedContent = '(Generation stopped)';
       } else {
         const errMsg = err?.message || String(err);
-        accumulatedContent =
-          accumulatedContent || `Error: ${errMsg}`;
+        accumulatedContent = accumulatedContent || `Error: ${errMsg}`;
         useAppStore.getState().addLogEntry({
           timestamp: Date.now(), level: 'error', category: 'chat',
           message: `Stream error: ${errMsg}`,
@@ -445,66 +546,27 @@ export function InputArea() {
       if (!accumulatedContent) {
         accumulatedContent = 'No response was generated. Please try again.';
       }
-      const totalMs = Date.now() - startTime;
-      const _CLOUD_PREFIXES = ['gpt-', 'o1-', 'o3-', 'o4-', 'claude-', 'gemini-', 'openrouter/', 'MiniMax-', 'chatgpt-'];
-      const engineLabel = _CLOUD_PREFIXES.some(p => selectedModel.startsWith(p)) ? 'cloud' : 'ollama';
-      const telemetry: MessageTelemetry = {
-        engine: engineLabel,
-        model_id: selectedModel,
-        total_ms: totalMs,
-        ttft_ms: ttftMs,
-        tokens_per_sec: usage?.completion_tokens
-          ? usage.completion_tokens / (totalMs / 1000)
-          : undefined,
-        complexity_score: complexity?.score,
-        complexity_tier: complexity?.tier,
-        suggested_max_tokens: complexity?.suggested_max_tokens,
-      };
-      let audioMeta: { url: string } | undefined;
-      try {
-        const digestRes = await fetch(`${getBase()}/api/digest`);
-        if (digestRes.ok) {
-          const digest = await digestRes.json();
-          if (digest.audio_available) {
-            audioMeta = { url: `${getBase()}/api/digest/audio` };
-          }
-        }
-      } catch {
-        // Not a digest response or server unavailable
-      }
 
-      updateLastAssistant(
-        convId,
-        accumulatedContent,
-        toolCalls.length > 0 ? toolCalls : undefined,
-        usage,
-        telemetry,
-        audioMeta,
-        researchTraces.length > 0 ? researchTraces : undefined,
-        researchSourcesByRef.size > 0 ? flushSources() : undefined,
-      );
+      updateLastAssistant(convId, accumulatedContent);
+
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
       resetStream();
+
       useAppStore.getState().addLogEntry({
         timestamp: Date.now(), level: 'info', category: 'chat',
         message: `Response: ${accumulatedContent.length} chars`,
       });
       abortRef.current = null;
-
-      if (!deepResearch) {
-        fetchSavings()
-          .then((data) => useAppStore.getState().setSavings(data))
-          .catch(() => {});
-      }
     }
   }, [
     input,
     activeId,
     selectedModel,
     streamState.isStreaming,
+    useTronMode,
     createConversation,
     addMessage,
     updateLastAssistant,
@@ -522,7 +584,62 @@ export function InputArea() {
     }
   };
 
-  // Avatar state based on stream and speech
+  const handleTextareaPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].kind === 'file' && items[i].type.startsWith('image/')) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = async (ev) => {
+            const base64 = ev.target?.result as string;
+            try {
+              toast.loading('Analyzing screenshot (this may take up to 2 minutes)...', { id: 'screenshot-analysis', duration: Infinity });
+              const res = await fetch(`${getBase()}/v1/analyze-screenshot`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  image_base64: base64,
+                  prompt: 'Analyze this screenshot and suggest improvements',
+                  context: '',
+                }),
+                signal: AbortSignal.timeout(150000), // 2.5 minute timeout
+              });
+              if (!res.ok) throw new Error(`Analysis failed: ${res.status}`);
+              const result = await res.json();
+              console.log('[Paste] Full response:', result);
+              toast.dismiss('screenshot-analysis');
+              
+              if (result.status === 'completed') {
+                const analysis = result.analysis || '';
+                const suggestions = result.suggestions || [];
+                const suggestionsText = suggestions.length > 0 
+                  ? '\n\nSuggestions:\n' + suggestions.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n')
+                  : '';
+                const fullAnalysis = `Screenshot Analysis:\n${analysis}${suggestionsText}`;
+                setInput(fullAnalysis);
+                toast.success('Screenshot analyzed - ready to send!');
+              } else {
+                toast.error(result.error || 'Analysis failed');
+              }
+            } catch (err: any) {
+              toast.dismiss('screenshot-analysis');
+              toast.error(err?.message || 'Failed to analyze screenshot');
+              console.error('[Paste Analysis] Error:', err);
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+        break;
+      }
+    }
+  };
+
+
+
   const avatarState = getChatAvatarState(streamState.isStreaming, speechState);
 
   return (
@@ -536,8 +653,24 @@ export function InputArea() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setDeepResearch(!deepResearch)}
+            onClick={() => setUseTronMode(!useTronMode)}
             disabled={streamState.isStreaming}
+            aria-pressed={useTronMode}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-colors cursor-pointer disabled:cursor-default disabled:opacity-50"
+            style={{
+              background: useTronMode ? 'var(--color-accent-subtle)' : 'transparent',
+              border: `1px solid ${useTronMode ? 'var(--color-accent)' : 'var(--color-border)'}`,
+              color: useTronMode ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
+            }}
+            title={useTronMode ? 'Tron Coordinator: on' : 'Tron Coordinator: off'}
+          >
+            <Bot size={12} />
+            Tron Coordinator
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeepResearch(!deepResearch)}
+            disabled={streamState.isStreaming || useTronMode}
             aria-pressed={deepResearch}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-colors cursor-pointer disabled:cursor-default disabled:opacity-50"
             style={{
@@ -545,7 +678,7 @@ export function InputArea() {
               border: `1px solid ${deepResearch ? 'var(--color-accent)' : 'var(--color-border)'}`,
               color: deepResearch ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
             }}
-            title={deepResearch ? 'Deep Research: on' : 'Deep Research: off'}
+            title={useTronMode ? 'Deep Research disabled in Tron mode' : deepResearch ? 'Deep Research: on' : 'Deep Research: off'}
           >
             <Search size={12} />
             Deep Research
@@ -560,7 +693,7 @@ export function InputArea() {
             <span key={corpusSync.itemsSynced} className="sync-bump" style={{ color: 'var(--color-text-secondary)' }}>
               {corpusSync.itemsSynced.toLocaleString()}
             </span>{' '}
-            items – sync in progress, results will improve as more data is indexed.
+            items - sync in progress, results will improve as more data is indexed.
           </div>
         )}
       </div>
@@ -577,7 +710,8 @@ export function InputArea() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={selectedModel ? 'Message OpenTron...' : 'Pick a model first (?K)...'}
+          onPaste={handleTextareaPaste}
+          placeholder={useTronMode ? 'Message Tron...' : selectedModel ? 'Message OpenTron...' : 'Pick a model first (?K)...'}
           rows={1}
           className="flex-1 bg-transparent outline-none resize-none text-sm leading-relaxed"
           style={{ color: 'var(--color-text)', maxHeight: '200px' }}
@@ -594,16 +728,19 @@ export function InputArea() {
           </button>
         ) : (
           <div className="flex items-center gap-1">
-            <MicButton
-              state={speechState}
-              onClick={handleMicClick}
-              disabled={micDisabled}
-              reason={micReason}
-            />
+            {!useTronMode && (
+              <MicButton
+                state={speechState}
+                onClick={handleMicClick}
+                disabled={micDisabled}
+                reason={micReason}
+              />
+            )}
+
             <button
               onClick={sendMessage}
-              disabled={!input.trim() || modelLoading || !selectedModel}
-              title={selectedModel ? 'Send message' : 'Pick a model first (?K)'}
+              disabled={!input.trim() || modelLoading || (!useTronMode && !selectedModel)}
+              title={useTronMode ? 'Send to Tron' : selectedModel ? 'Send message' : 'Pick a model first (?K)'}
               className="p-2 rounded-xl transition-colors shrink-0 cursor-pointer disabled:opacity-30 disabled:cursor-default"
               style={{
                 background: input.trim() ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',

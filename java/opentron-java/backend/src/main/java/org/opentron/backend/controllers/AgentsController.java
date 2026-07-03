@@ -3,10 +3,13 @@ package org.opentron.backend.controllers;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.opentron.backend.agents.MultiAgentCoordinator;
+import org.opentron.backend.storage.service.StorageService;
+import org.opentron.backend.storage.entities.TraceLog;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
@@ -15,6 +18,10 @@ import reactor.util.retry.Retry;
 public class AgentsController {
 
     private final MultiAgentCoordinator coordinator;
+    
+    @Autowired
+    private StorageService storageService;
+    
     private final Map<String, Map<String, Object>> taskResults = new ConcurrentHashMap<>();
     private final Map<String, Long> taskTimestamps = new ConcurrentHashMap<>();
     private static final long TASK_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -53,6 +60,15 @@ public class AgentsController {
             try {
                 Map<String, Object> result = coordinator.processRequest(userRequest, context);
                 long totalTime = System.currentTimeMillis() - start;
+                
+                // Save trace to PostgreSQL
+                try {
+                    String resultStr = result != null ? result.toString() : "no result";
+                    storageService.saveTrace("coordinator", userRequest, resultStr, (int) totalTime);
+                    System.out.println("[AgentsController] 💾 Trace saved to PostgreSQL");
+                } catch (Exception e) {
+                    System.err.println("[AgentsController] ⚠️ Failed to save trace: " + e.getMessage());
+                }
                 
                 // Ensure response shape matches frontend expectations
                 Map<String, Object> response = new java.util.HashMap<>();
@@ -158,6 +174,13 @@ public class AgentsController {
                     result.put("message", "Task sent to " + agent + " agent");
                     
                     taskResults.put(taskId, result);
+                    
+                    // Save task to database
+                    try {
+                        storageService.saveTrace(agent, task, "Task completed", 0);
+                    } catch (Exception e) {
+                        System.err.println("[AgentsController] ⚠️ Failed to save task trace: " + e.getMessage());
+                    }
                 } catch (Exception e) {
                     System.err.println("[AgentsController] Task error: " + e.getMessage());
                     Map<String, Object> errorResult = new java.util.HashMap<>();
@@ -442,5 +465,68 @@ public class AgentsController {
         @RequestBody Map<String, Object> credentials
     ) {
         return ResponseEntity.ok().build();
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // DATABASE STORAGE ENDPOINTS
+    // ─────────────────────────────────────────────────────────────────────────
+    
+    /**
+     * Get storage statistics from PostgreSQL
+     */
+    @GetMapping("/storage/stats")
+    public ResponseEntity<Map<String, Object>> getStorageStats() {
+        try {
+            StorageService.StorageStats stats = storageService.getStorageStats();
+            Map<String, Object> response = new java.util.HashMap<>();
+            response.put("total_memories", stats.totalMemoryEntries);
+            response.put("total_traces", stats.totalTraceEntries);
+            response.put("backend", "postgresql");
+            response.put("timestamp", System.currentTimeMillis());
+            System.out.println("[AgentsController] 📊 Storage stats: " + stats.toString());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("[AgentsController] ❌ Error getting storage stats: " + e.getMessage());
+            Map<String, Object> errorMap = new java.util.HashMap<>();
+            errorMap.put("error", e.getMessage());
+            return new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    /**
+     * Get recent traces for an agent from PostgreSQL
+     */
+    @GetMapping("/storage/traces/{agentId}")
+    public ResponseEntity<Map<String, Object>> getStorageTraces(
+        @PathVariable String agentId,
+        @RequestParam(defaultValue = "50") int limit
+    ) {
+        try {
+            List<TraceLog> traces = storageService.loadTraces(agentId, Math.min(limit, 1000));
+            List<Map<String, Object>> traceList = new java.util.ArrayList<>();
+            
+            for (TraceLog trace : traces) {
+                Map<String, Object> traceMap = new java.util.HashMap<>();
+                traceMap.put("id", trace.getId());
+                traceMap.put("agent", trace.getAgent());
+                traceMap.put("duration_ms", trace.getDurationMs());
+                traceMap.put("timestamp", trace.getTimestamp().toString());
+                traceMap.put("is_compressed", trace.getIsCompressed());
+                traceList.add(traceMap);
+            }
+            
+            Map<String, Object> response = new java.util.HashMap<>();
+            response.put("traces", traceList);
+            response.put("count", traceList.size());
+            response.put("timestamp", System.currentTimeMillis());
+            
+            System.out.println("[AgentsController] 📋 Loaded " + traceList.size() + " traces for agent " + agentId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("[AgentsController] ❌ Error loading traces: " + e.getMessage());
+            Map<String, Object> errorMap = new java.util.HashMap<>();
+            errorMap.put("error", e.getMessage());
+            return new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }

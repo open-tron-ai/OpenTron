@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import {
   Palette,
   Globe,
@@ -213,7 +213,7 @@ export function SettingsPage() {
       } else {
         await setInferenceSource({ kind: 'ollama' });
       }
-      setSrcMsg('Saved — restart the app to apply.');
+      setSrcMsg('Saved â€” restart the app to apply.');
     } catch (e: any) {
       setSrcMsg(e?.message ?? 'Failed to save.');
     }
@@ -222,7 +222,7 @@ export function SettingsPage() {
   useEffect(() => {
     checkHealth().then(setHealthy);
     fetchSpeechHealth()
-      .then((h) => setSpeechBackendAvailable(h.available))
+      .then((h) => setSpeechBackendAvailable(h.available ?? false))
       .catch(() => setSpeechBackendAvailable(false));
     getMemoryStats()
       .then(setMemoryStats)
@@ -277,7 +277,7 @@ export function SettingsPage() {
     }
     localStorage.removeItem('OpenTron-conversations');
     useAppStore.getState().loadConversations();
-    setConfirmClear(false);
+    setConfirmClear(false as any);
     showSaved();
   };
 
@@ -299,7 +299,7 @@ export function SettingsPage() {
             )}
           </div>
           <p className="text-sm mt-2 max-w-2xl" style={{ color: 'var(--color-text-secondary)' }}>
-            App preferences — appearance, model defaults, keyboard shortcuts, and data management.
+            App preferences â€” appearance, model defaults, keyboard shortcuts, and data management.
           </p>
         </header>
 
@@ -485,7 +485,7 @@ export function SettingsPage() {
 
           {/* Memory */}
           <Section title="Memory">
-            <SettingRow label="Memory status" description={memoryStats ? `${memoryStats.backend} backend — ${memoryStats.entries} entries` : 'Unable to reach memory service'}>
+            <SettingRow label="Memory status" description={memoryStats ? `${memoryStats.backend} backend â€” ${memoryStats.entries} entries` : 'Unable to reach memory service'}>
               <div className="flex items-center gap-2">
                 <Brain size={14} style={{ color: memoryStats ? 'var(--color-accent)' : 'var(--color-text-tertiary)' }} />
                 <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
@@ -775,7 +775,7 @@ export function SettingsPage() {
               >
                 <RefreshCw size={12} className={updateCheckState === 'checking' ? 'animate-spin' : ''} />
                 {updateCheckState === 'checking' && 'Checking...'}
-                {updateCheckState === 'available' && 'Update available — see banner above'}
+                {updateCheckState === 'available' && 'Update available â€” see banner above'}
                 {updateCheckState === 'latest' && 'Already up to date'}
                 {updateCheckState === 'idle' && 'Check now'}
               </button>
@@ -786,7 +786,7 @@ export function SettingsPage() {
           <Section title="About">
             <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
               <p className="mb-2">
-                <span className="font-semibold" style={{ color: 'var(--color-text)' }}>OpenTron</span> — Programming abstractions for on-device AI.
+                <span className="font-semibold" style={{ color: 'var(--color-text)' }}>OpenTron</span> â€” Programming abstractions for on-device AI.
               </p>
               <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
                 Part of Intelligence Per Watt, a research initiative at Stanford SAIL.
