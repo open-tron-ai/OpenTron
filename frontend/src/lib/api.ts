@@ -701,7 +701,11 @@ async function handleApiError(res: Response, action: string): Promise<never> {
   }
 }
 
-export async function coordinateAgents(request: string, context?: string): Promise<any> {
+export async function coordinateAgents(
+  request: string,
+  context?: string,
+  onEvent?: (event: { type: string; agent?: string; message?: string; preview?: string; error?: string; result?: any; elapsed_ms?: number }) => void
+): Promise<any> {
   try {
     const res = await apiFetch(`/v1/agents/coordinate`, {
       method: 'POST',
@@ -709,7 +713,61 @@ export async function coordinateAgents(request: string, context?: string): Promi
       body: JSON.stringify({ request, context: context || '' }),
     });
     if (!res.ok) await handleApiError(res, 'Failed to coordinate agents');
-    return res.json();
+
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let finalResult: any = null;
+    let buffer = '';
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          // Flush remaining buffer on stream close (handles truncated last chunk)
+          if (buffer.trim()) {
+            for (const line of buffer.split('\n')) {
+              const trimmed = line.trim();
+              const jsonStr = trimmed.startsWith('data:data: ') ? trimmed.slice(11)
+                            : trimmed.startsWith('data: ')      ? trimmed.slice(6)
+                            : trimmed.startsWith('data:')       ? trimmed.slice(5)
+                            : trimmed.startsWith('{')           ? trimmed  // raw JSON
+                            : null;
+              if (jsonStr) {
+                try {
+                  const data = JSON.parse(jsonStr);
+                  if (onEvent) onEvent(data);
+                  if (data.type === 'done') finalResult = data;
+                } catch {}
+              }
+            }
+          }
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+
+        // Always parse as SSE — split on double newline (event boundary)
+        const events = buffer.split('\n\n');
+        buffer = events.pop() ?? '';
+        for (const event of events) {
+          for (const line of event.split('\n')) {
+            const trimmed = line.trim();
+            const jsonStr = trimmed.startsWith('data:data: ') ? trimmed.slice(11)
+                          : trimmed.startsWith('data: ')      ? trimmed.slice(6)
+                          : trimmed.startsWith('data:')       ? trimmed.slice(5)
+                          : null;
+            if (jsonStr) {
+              try {
+                const data = JSON.parse(jsonStr);
+                if (onEvent) onEvent(data);
+                if (data.type === 'done') finalResult = data;
+              } catch {}
+            }
+          }
+        }
+      }
+    }
+
+    return finalResult;
   } catch (error: any) {
     if (error.response) throw error;
     throw { response: { data: { error: error.message || 'Unknown error' } } };

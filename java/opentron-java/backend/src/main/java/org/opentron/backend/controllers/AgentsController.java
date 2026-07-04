@@ -37,66 +37,89 @@ public class AgentsController {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Process request through the agent network (blocking call)
-     * Coordinator automatically delegates to appropriate specialists
+     * Process request through the agent network — streams SSE events.
+     * Emits agent_start, agent_done, agent_error, and done events.
      */
-    @PostMapping("/coordinate")
-    public Mono<ResponseEntity<Map<String, Object>>> coordinateAgents(
+    @PostMapping(value = "/coordinate", produces = "text/event-stream")
+    public reactor.core.publisher.Flux<String> coordinateAgents(
             @RequestBody Map<String, String> request) {
-        
-        return Mono.fromCallable(() -> {
-            String userRequest = request.get("request");
-            String context = request.getOrDefault("context", "");
-            
-            if (userRequest == null || userRequest.isBlank()) {
-                Map<String, Object> errorMap = new java.util.HashMap<>();
-                errorMap.put("error", "Missing 'request' field");
-                return new ResponseEntity<>(errorMap, HttpStatus.BAD_REQUEST);
-            }
 
-            System.out.println("[AgentsController] 🚀 Processing: " + userRequest);
-            long start = System.currentTimeMillis();
+        String userRequest = request.get("request");
+        String context = request.getOrDefault("context", "");
 
-            try {
-                Map<String, Object> result = coordinator.processRequest(userRequest, context);
-                long totalTime = System.currentTimeMillis() - start;
-                
-                // Save trace to PostgreSQL
+        if (userRequest == null || userRequest.isBlank()) {
+            return reactor.core.publisher.Flux.just("data: {\"type\":\"error\",\"message\":\"Missing request field\"}\n\n");
+        }
+
+        final String req = userRequest;
+        final String ctx = context;
+
+        return reactor.core.publisher.Flux.create(sink -> {
+            new Thread(() -> {
+                long start = System.currentTimeMillis();
                 try {
-                    String resultStr = result != null ? result.toString() : "no result";
-                    storageService.saveTrace("coordinator", userRequest, resultStr, (int) totalTime);
-                    System.out.println("[AgentsController] 💾 Trace saved to PostgreSQL");
+                    System.out.println("[AgentsController] Streaming coordinate: " + req);
+
+                    // Emit routing event
+                    sink.next(sseEvent("status", Map.of("message", "Tron is analyzing your request...", "phase", "routing")));
+
+                    // Delegate to coordinator (which uses virtual threads per agent)
+                    // The coordinator now emits per-agent progress via a callback
+                    MultiAgentCoordinator.StreamingCoordinatorCallback callback = new MultiAgentCoordinator.StreamingCoordinatorCallback() {
+                        @Override
+                        public void onAgentStart(String agent) {
+                            sink.next(sseEvent("agent_start", Map.of("agent", agent, "message", "Agent " + agent + " is thinking...")));
+                        }
+                        @Override
+                        public void onAgentDone(String agent, Map<String, Object> result) {
+                            String preview = "";
+                            if (result.containsKey("response")) {
+                                String r = (String) result.get("response");
+                                preview = r.length() > 120 ? r.substring(0, 120) + "..." : r;
+                            }
+                            sink.next(sseEvent("agent_done", Map.of("agent", agent, "preview", preview)));
+                        }
+                        @Override
+                        public void onAgentError(String agent, String error) {
+                            sink.next(sseEvent("agent_error", Map.of("agent", agent, "error", error)));
+                        }
+                    };
+
+                    Map<String, Object> result = coordinator.processRequest(req, ctx, callback);
+                    long totalTime = System.currentTimeMillis() - start;
+
+                    // Save trace
+                    try {
+                        storageService.saveTrace("coordinator", req, result != null ? result.toString() : "", (int) totalTime);
+                    } catch (Exception e) {
+                        System.err.println("[AgentsController] Trace save failed: " + e.getMessage());
+                    }
+
+                    // Emit final done event with full result
+                    Map<String, Object> donePayload = new java.util.HashMap<>();
+                    donePayload.put("type", "done");
+                    donePayload.put("result", result);
+                    donePayload.put("elapsed_ms", totalTime);
+                    sink.next(sseEvent("done", donePayload));
+                    sink.complete();
+
                 } catch (Exception e) {
-                    System.err.println("[AgentsController] ⚠️ Failed to save trace: " + e.getMessage());
+                    System.err.println("[AgentsController] Stream error: " + e.getMessage());
+                    sink.next(sseEvent("error", Map.of("message", e.getMessage())));
+                    sink.complete();
                 }
-                
-                // Ensure response shape matches frontend expectations
-                Map<String, Object> response = new java.util.HashMap<>();
-                response.put("result", result);
-                response.put("elapsed_ms", totalTime);
-                response.put("total_time_ms", totalTime);
-                response.put("timestamp", System.currentTimeMillis());
-                
-                System.out.println("[AgentsController] ✅ Response ready in " + totalTime + "ms");
-                return new ResponseEntity<>(response, HttpStatus.OK);
-            } catch (Exception e) {
-                long totalTime = System.currentTimeMillis() - start;
-                System.err.println("[AgentsController] ❌ Error: " + e.getMessage());
-                e.printStackTrace();
-                
-                Map<String, Object> errorMap = new java.util.HashMap<>();
-                errorMap.put("error", e.getMessage() != null ? e.getMessage() : "Coordinator error");
-                errorMap.put("elapsed_ms", totalTime);
-                
-                return new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-        })
-        .retryWhen(Retry.backoff(2, java.time.Duration.ofMillis(100)))
-        .onErrorResume(e -> {
-            Map<String, Object> errorMap = new java.util.HashMap<>();
-            errorMap.put("error", "Coordinator timeout or failure: " + e.getMessage());
-            return Mono.just(new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR));
+            }).start();
         });
+    }
+
+    private String sseEvent(String type, Map<String, Object> data) {
+        try {
+            Map<String, Object> payload = new java.util.HashMap<>(data);
+            payload.put("type", type);
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payload);
+        } catch (Exception e) {
+            return "{\"type\":\"error\",\"message\":\"serialization error\"}";
+        }
     }
 
     /**

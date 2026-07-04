@@ -77,6 +77,7 @@ function useResearchCorpusSync(enabled: boolean): {
 export function InputArea() {
   const [input, setInput] = useState('');
   const [useTronMode, setUseTronMode] = useState(true);
+  const accumulatedContentRef = useRef('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -230,10 +231,38 @@ export function InputArea() {
 
         try {
           ttftMs = Date.now() - startTime;
-          const coordinatorResponse = await coordinateAgents(content, '');
+          accumulatedContent = '';
+          accumulatedContentRef.current = '';
+
+          const coordinatorResponse = await coordinateAgents(content, '', (event) => {
+            if (event.type === 'status') {
+              setStreamState({ phase: event.message || 'Coordinating...' });
+            } else if (event.type === 'agent_start') {
+              setStreamState({ phase: `${event.agent} agent is thinking...` });
+            } else if (event.type === 'agent_done') {
+              const preview = event.preview || '';
+              if (preview) {
+                accumulatedContentRef.current += (accumulatedContentRef.current ? '\n\n' : '') + `**${event.agent} Agent:**\n${preview}`;
+                setStreamState({ content: accumulatedContentRef.current, phase: `${event.agent} done, waiting for others...` });
+                updateLastAssistant(convId, accumulatedContentRef.current);
+              } else {
+                setStreamState({ phase: `${event.agent} done, waiting for others...` });
+              }
+            } else if (event.type === 'agent_error') {
+              setStreamState({ phase: `${event.agent} encountered an error...` });
+            }
+          });
+
           const parsed = parseCoordinatorResponse(coordinatorResponse);
-          
-          accumulatedContent = parsed.tronResponse;
+
+          // Use full tron_response as final content
+          if (parsed.tronResponse && parsed.tronResponse !== 'Processing complete.') {
+            accumulatedContent = parsed.tronResponse;
+          } else if (accumulatedContentRef.current) {
+            accumulatedContent = accumulatedContentRef.current;
+          } else {
+            accumulatedContent = 'Processing complete.';
+          }
 
           useAppStore.getState().addLogEntry({
             timestamp: Date.now(),
