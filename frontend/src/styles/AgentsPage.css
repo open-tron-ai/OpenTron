@@ -1,0 +1,235 @@
+/* Agents Page Styles */
+
+.agents-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.agents-page h1 {
+  color: #00ff88;
+  font-size: 2rem;
+  margin-bottom: 3rem;
+  text-align: left;
+}
+
+/* TRON - TOP CENTER */
+.tron-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 4rem;
+  width: 100%;
+}
+
+.tron-card {
+  width: 100%;
+  max-width: 700px;
+  border: 2px solid #00ff88 !important;
+  background: rgba(0, 255, 136, 0.08) !important;
+}
+
+.tron-card .agent-header {
+  border-bottom: 2px solid #00ff88;
+}
+
+.tron-card h2 {
+  color: #00ff88 !important;
+  font-size: 2rem;
+  margin: 0 0 0.5rem 0 !important;
+  font-weight: 900;
+}
+
+/* SPECIALISTS HEADING */
+.agents-page h3.specialists-heading {
+  color: #888;
+  font-size: 0.9rem;
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* AGENTS GRID - 2x2 */
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* AGENT CARDS */
+.agent-card {
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.6);
+  transition: all 0.3s ease;
+}
+
+.agent-card:hover {
+  border-color: #00ff88;
+  background: rgba(0, 255, 136, 0.08);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+}
+
+.agent-header {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+.agent-header h2,
+.agent-header h3 {
+  color: #fff;
+  margin: 0;
+  font-weight: bold;
+}
+
+.agent-header h2 {
+  font-size: 1.6rem;
+}
+
+.agent-header h3 {
+  font-size: 1.1rem;
+}
+
+.agent-subtitle {
+  color: #888;
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0 0;
+  font-weight: normal;
+}
+
+/* SKILLS */
+.skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.skill-tag {
+  background: rgba(0, 255, 136, 0.15);
+  color: #00ff88;
+  padding: 0.4rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.skill-tag:hover {
+  background: rgba(0, 255, 136, 0.25);
+  border-color: #00ff88;
+}
+
+/* REFRESH BUTTON */
+.refresh-btn {
+  padding: 0.75rem 1.5rem;
+  background: #00ff88;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.refresh-btn:hover {
+  background: #00dd6f;
+  transform: translateY(-2px);
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .agents-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tron-card {
+    max-width: 600px;
+  }
+}
+
+@media (max-width: 768px) {
+  .agents-page {
+    padding: 1rem;
+  }
+
+  .agents-page h1 {
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .agents-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .tron-wrapper {
+    margin-bottom: 2rem;
+  }
+
+  .agent-card {
+    padding: 1rem;
+  }
+
+  .agent-header {
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .agent-header h2 {
+    font-size: 1.4rem;
+  }
+
+  .agent-header h3 {
+    font-size: 1rem;
+  }
+
+  .skills-container {
+    gap: 0.5rem;
+  }
+
+  .skill-tag {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+  }
+
+  .tron-card {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .agents-page h1 {
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .agents-page h3 {
+    font-size: 0.8rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .agent-card {
+    padding: 0.75rem;
+  }
+
+  .agent-header h3 {
+    font-size: 0.95rem;
+  }
+
+  .agent-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .skill-tag {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+  }
+}

@@ -1,0 +1,252 @@
+package org.opentron.backend.controllers;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import org.opentron.backend.agents.MultiAgentCoordinator;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
+
+/**
+ * MultiAgentController - Exposes the multi-agent coordinator system
+ * 
+ * Endpoints:
+ * - POST /v1/agents/coordinate - Process request through agent network (blocking)
+ * - GET /v1/agents/status - Get all agent statuses
+ * - POST /v1/agents/task - Send task to specific agent (async with tracking)
+ * - GET /v1/agents/task/{taskId} - Poll for async task result
+ */
+@RestController
+@RequestMapping("/v1/agents")
+public class MultiAgentController {
+
+    private final MultiAgentCoordinator coordinator;
+    private final Map<String, Map<String, Object>> taskResults = new ConcurrentHashMap<>();
+    private final Map<String, Long> taskTimestamps = new ConcurrentHashMap<>();
+    private static final long TASK_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+    public MultiAgentController(MultiAgentCoordinator coordinator) {
+        this.coordinator = coordinator;
+        
+        // Start cleanup thread for old task results
+        startTaskCleanupThread();
+    }
+
+    /**
+     * Process request through the agent network (blocking call)
+     * Coordinator automatically delegates to appropriate specialists
+     */
+    @PostMapping("/coordinate")
+    public Mono<ResponseEntity<Map<String, Object>>> coordinateAgents(
+            @RequestBody Map<String, String> request) {
+        
+        return Mono.fromCallable(() -> {
+            String userRequest = request.get("request");
+            String context = request.getOrDefault("context", "");
+            
+            if (userRequest == null || userRequest.isBlank()) {
+                Map<String, Object> errorMap = new java.util.HashMap<>();
+                errorMap.put("error", "Missing 'request' field");
+                return new ResponseEntity<>(errorMap, HttpStatus.BAD_REQUEST);
+            }
+
+            System.out.println("[MultiAgentController] Processing: " + userRequest);
+            long start = System.currentTimeMillis();
+
+            try {
+                Map<String, Object> result = coordinator.processRequest(userRequest, context);
+                long totalTime = System.currentTimeMillis() - start;
+                
+                // Ensure response shape matches frontend expectations
+                Map<String, Object> response = new java.util.HashMap<>();
+                response.put("result", result);
+                response.put("elapsed_ms", totalTime);
+                response.put("total_time_ms", totalTime);
+                response.put("timestamp", System.currentTimeMillis());
+                
+                return new ResponseEntity<>(response, HttpStatus.OK);
+            } catch (Exception e) {
+                long totalTime = System.currentTimeMillis() - start;
+                System.err.println("[MultiAgentController] Error: " + e.getMessage());
+                e.printStackTrace();
+                
+                Map<String, Object> errorMap = new java.util.HashMap<>();
+                errorMap.put("error", e.getMessage() != null ? e.getMessage() : "Coordinator error");
+                errorMap.put("elapsed_ms", totalTime);
+                
+                return new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        })
+        .retryWhen(Retry.backoff(2, java.time.Duration.ofMillis(100)))
+        .onErrorResume(e -> {
+            Map<String, Object> errorMap = new java.util.HashMap<>();
+            errorMap.put("error", "Coordinator timeout or failure");
+            return Mono.just(new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR));
+        });
+    }
+
+    /**
+     * Get status of all agents
+     */
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> getAgentStatuses() {
+        try {
+            Map<String, Object> statuses = coordinator.getAgentStatuses();
+            Map<String, Object> response = new java.util.HashMap<>();
+            response.put("agents", statuses);
+            response.put("timestamp", System.currentTimeMillis());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("[MultiAgentController] Error getting statuses: " + e.getMessage());
+            Map<String, Object> errorMap = new java.util.HashMap<>();
+            errorMap.put("error", e.getMessage());
+            return new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Send a task to a specific agent (async)
+     * Returns a taskId for polling results
+     */
+    @PostMapping("/task")
+    public Mono<ResponseEntity<Map<String, Object>>> sendAgentTask(
+            @RequestBody Map<String, String> request) {
+        
+        return Mono.fromCallable(() -> {
+            String agent = request.get("agent");
+            String task = request.get("task");
+            
+            if (agent == null || agent.isBlank() || task == null || task.isBlank()) {
+                Map<String, Object> errorMap = new java.util.HashMap<>();
+                errorMap.put("error", "Missing 'agent' or 'task' field");
+                return new ResponseEntity<>(errorMap, HttpStatus.BAD_REQUEST);
+            }
+
+            // Generate unique task ID
+            String taskId = "task-" + System.currentTimeMillis() + "-" + agent;
+            
+            System.out.println("[MultiAgentController] Sending task " + taskId + " to " + agent);
+
+            // Store pending status
+            Map<String, Object> taskData = new java.util.HashMap<>();
+            taskData.put("status", "pending");
+            taskData.put("agent", agent);
+            taskData.put("task", task);
+            taskData.put("created_at", System.currentTimeMillis());
+            
+            taskResults.put(taskId, taskData);
+            taskTimestamps.put(taskId, System.currentTimeMillis());
+
+            // Send message asynchronously in background
+            new Thread(() -> {
+                try {
+                    MultiAgentCoordinator.AgentMessage msg = new MultiAgentCoordinator.AgentMessage(
+                        agent,
+                        "task",
+                        Map.of("task", task)
+                    );
+                    
+                    coordinator.sendMessage(msg);
+                    
+                    // Mark as completed (for now - in production would wait for actual result)
+                    Map<String, Object> result = new java.util.HashMap<>();
+                    result.put("status", "completed");
+                    result.put("agent", agent);
+                    result.put("task", task);
+                    result.put("completed_at", System.currentTimeMillis());
+                    result.put("message", "Task sent to " + agent + " agent");
+                    
+                    taskResults.put(taskId, result);
+                } catch (Exception e) {
+                    System.err.println("[MultiAgentController] Task error: " + e.getMessage());
+                    Map<String, Object> errorResult = new java.util.HashMap<>();
+                    errorResult.put("status", "error");
+                    errorResult.put("error", e.getMessage());
+                    errorResult.put("failed_at", System.currentTimeMillis());
+                    
+                    taskResults.put(taskId, errorResult);
+                }
+            }).start();
+
+            Map<String, Object> response = new java.util.HashMap<>();
+            response.put("status", "pending");
+            response.put("task_id", taskId);
+            response.put("agent", agent);
+            response.put("poll_url", "/v1/agents/task/" + taskId);
+            response.put("timestamp", System.currentTimeMillis());
+            response.put("message", "Task queued. Poll /v1/agents/task/" + taskId + " for results");
+            
+            return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
+        })
+        .onErrorResume(e -> {
+            Map<String, Object> errorMap = new java.util.HashMap<>();
+            errorMap.put("error", e.getMessage());
+            return Mono.just(new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR));
+        });
+    }
+
+    /**
+     * Poll for async task result
+     */
+    @GetMapping("/task/{taskId}")
+    public ResponseEntity<Map<String, Object>> getTaskResult(@PathVariable String taskId) {
+        try {
+            Map<String, Object> result = taskResults.get(taskId);
+            
+            if (result == null) {
+                Map<String, Object> errorMap = new java.util.HashMap<>();
+                errorMap.put("error", "Task not found or expired");
+                return new ResponseEntity<>(errorMap, HttpStatus.NOT_FOUND);
+            }
+
+            String status = (String) result.get("status");
+            
+            if ("pending".equals(status)) {
+                Map<String, Object> response = new java.util.HashMap<>();
+                response.put("status", "pending");
+                response.put("message", "Task is still processing");
+                response.put("task_id", taskId);
+                response.put("retry_after_ms", 1000);
+                return ResponseEntity.ok(response);
+            } else if ("error".equals(status)) {
+                return new ResponseEntity<>(result, HttpStatus.INTERNAL_SERVER_ERROR);
+            } else if ("completed".equals(status)) {
+                return ResponseEntity.ok(result);
+            } else {
+                return ResponseEntity.ok(result);
+            }
+        } catch (Exception e) {
+            System.err.println("[MultiAgentController] Error polling task: " + e.getMessage());
+            Map<String, Object> errorMap = new java.util.HashMap<>();
+            errorMap.put("error", e.getMessage());
+            return new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Clean up old task results (runs every minute)
+     */
+    private void startTaskCleanupThread() {
+        new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(60000); // 1 minute
+                    
+                    long now = System.currentTimeMillis();
+                    taskTimestamps.entrySet().removeIf(entry -> 
+                        now - entry.getValue() > TASK_TTL_MS
+                    );
+                    
+                    System.out.println("[MultiAgentController] Cleaned up old tasks. Remaining: " + 
+                        taskResults.size());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }).start();
+    }
+}

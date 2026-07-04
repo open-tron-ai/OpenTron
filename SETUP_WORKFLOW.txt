@@ -1,0 +1,201 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    OPENTRON POSTGRES DOCKER SETUP WORKFLOW                 ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+📋 PRE-REQUISITES
+═══════════════════════════════════════════════════════════════════════════
+✅ Docker Desktop installed (version 29.6.1 or later)
+✅ Docker daemon available
+✅ Java 17+ installed
+✅ Maven 3.6+ installed
+✅ Project files in place
+
+
+🚀 STEP 1: START DOCKER DESKTOP
+═══════════════════════════════════════════════════════════════════════════
+
+WINDOWS:
+  1. Search for "Docker Desktop" in Start Menu
+  2. Click to open (or right-click > Open)
+  3. Wait for Docker icon in system tray
+  4. When ready, it will say "Docker Desktop is running"
+
+macOS:
+  1. Open Applications folder
+  2. Find and double-click Docker.app
+  3. Wait for Docker icon in menu bar (top-right)
+  4. Click and wait for "Docker Desktop is running"
+
+Linux:
+  1. Open terminal
+  2. Run: systemctl start docker
+  3. Or: sudo systemctl start docker
+
+Expected Time: 30-60 seconds
+
+
+🔧 STEP 2: RUN SETUP SCRIPT
+═══════════════════════════════════════════════════════════════════════════
+
+WINDOWS (PowerShell):
+  PS> cd C:\Users\ciorica\Documents\OpenTron
+  PS> .\setup-postgres.bat
+
+  What it does:
+    [1/5] Checks Docker daemon is running
+    [2/5] Creates PostgreSQL container (or starts existing)
+    [3/5] Waits for PostgreSQL to be ready (30 sec timeout)
+    [4/5] Verifies database connection
+    [5/5] Shows connection details
+  
+  Expected Output:
+    [SUCCESS] PostgreSQL is ready!
+    Connection Details:
+      Host:     localhost
+      Port:     5432
+      Database: opentron
+      User:     opentron
+      Password: opentron_secure_password
+
+macOS/Linux (Bash):
+  $ cd ~/Documents/OpenTron
+  $ chmod +x setup-postgres.sh
+  $ ./setup-postgres.sh
+
+Expected Time: 10-20 seconds
+
+
+🔑 STEP 3: SET ENVIRONMENT VARIABLES
+═══════════════════════════════════════════════════════════════════════════
+
+WINDOWS (PowerShell):
+  PS> $env:POSTGRES_URL = "jdbc:postgresql://localhost:5432/opentron"
+  PS> $env:POSTGRES_USER = "opentron"
+  PS> $env:POSTGRES_PASSWORD = "opentron_secure_password"
+  PS> $env:ENGINE_HOST = "http://localhost:11434"
+
+  Verify:
+  PS> echo $env:POSTGRES_URL
+
+macOS/Linux (Bash):
+  $ export POSTGRES_URL=jdbc:postgresql://localhost:5432/opentron
+  $ export POSTGRES_USER=opentron
+  $ export POSTGRES_PASSWORD=opentron_secure_password
+  $ export ENGINE_HOST=http://localhost:11434
+
+  Verify:
+  $ echo $POSTGRES_URL
+
+OR: Create .env file
+  $ cp .env.example .env
+  $ # Edit .env with your values (same as above)
+
+Expected Time: < 1 minute
+
+
+🏗️ STEP 4: BUILD JAVA BACKEND
+═══════════════════════════════════════════════════════════════════════════
+
+WINDOWS/macOS/Linux:
+  $ cd java/opentron-java/backend
+  $ mvn clean package -DskipTests
+
+  What it does:
+    [1] Cleans previous build
+    [2] Resolves dependencies from Maven Central
+    [3] Compiles Java source code
+    [4] Packages into JAR file
+    [5] Skips unit tests for faster build
+
+  Expected Output:
+    [INFO] BUILD SUCCESS
+    [INFO] Total time: XX.XXXs
+
+Expected Time: 2-5 minutes (first build may be longer due to dependencies)
+
+
+🚀 STEP 5: START JAVA BACKEND
+═══════════════════════════════════════════════════════════════════════════
+
+WINDOWS/macOS/Linux:
+  $ mvn spring-boot:run
+
+  What it does:
+    [1] Loads application.properties
+    [2] Connects to PostgreSQL using env vars
+    [3] Creates HikariCP connection pool (20 max, 5 min)
+    [4] Runs Flyway migrations (creates tables automatically)
+    [5] Starts Spring Boot application on port 8000
+
+  Expected Output:
+    [INFO] Configuring PostgreSQL connection pool
+    [INFO] URL: jdbc:postgresql://localhost:5432/opentron
+    [INFO] Connection pool initialized: max=20, min=5
+    [INFO] Flyway: Validating locations of migrations...
+    [INFO] Flyway: Successfully validated 1 migration
+    [INFO] Flyway: Executing migration V1__Initial_Schema.sql
+    [INFO] Successfully created tables...
+    [INFO] Application started in X.XXX seconds
+
+Expected Time: 10-30 seconds
+
+
+✅ STEP 6: VERIFY EVERYTHING
+═══════════════════════════════════════════════════════════════════════════
+
+Check PostgreSQL Container:
+  $ docker ps | grep postgres
+  
+  Expected Output:
+    opentron-postgres   postgres:16-alpine   Up 2 minutes   0.0.0.0:5432->5432/tcp
+
+Check PostgreSQL Connection:
+  $ docker exec opentron-postgres psql -U opentron -d opentron -c "SELECT 1;"
+  
+  Expected Output:
+    1
+
+Check Tables Created:
+  $ docker exec opentron-postgres psql -U opentron -d opentron -c "\dt"
+  
+  Expected Output shows tables like: agent_memory, trace_logs, skills, etc.
+
+Check Java Backend Health:
+  $ curl http://localhost:8000/v1/health
+  
+  Expected Output:
+    {"status":"UP"}
+
+
+🎯 SUMMARY
+═══════════════════════════════════════════════════════════════════════════
+
+  Step 1: Start Docker Desktop          ⏱️  30-60 seconds
+  Step 2: Run setup-postgres script     ⏱️  10-20 seconds
+  Step 3: Set environment variables     ⏱️  <1 minute
+  Step 4: Build Java backend            ⏱️  2-5 minutes
+  Step 5: Start Java backend            ⏱️  10-30 seconds
+  Step 6: Verify everything             ⏱️  <1 minute
+  ───────────────────────────────────────────────────
+  TOTAL                                 ⏱️  5-10 minutes
+
+
+📞 NEED HELP?
+═══════════════════════════════════════════════════════════════════════════
+
+  Quick Reference:          QUICK_REFERENCE.md
+  Full Setup Guide:         DOCKER_POSTGRES_SETUP.md
+  Complete Info:            POSTGRES_DOCKER_COMPLETE.md
+
+
+✨ YOU'RE ALL SET!
+═══════════════════════════════════════════════════════════════════════════
+
+  Everything is configured and ready to go.
+  Just follow the steps above and you'll have:
+    ✅ PostgreSQL running in Docker
+    ✅ Java backend connected
+    ✅ Database tables created
+    ✅ Ready to develop and test
+
+  Start with Step 1! 🚀
