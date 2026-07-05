@@ -3,6 +3,8 @@ package org.opentron.backend.agents;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -25,6 +27,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class SkillBasedOrchestrator {
 
+    private static final Logger logger = LoggerFactory.getLogger(SkillBasedOrchestrator.class);
+
     private final MultiAgentCoordinator coordinator;
     private final SkillRegistry skillRegistry;
 
@@ -40,15 +44,15 @@ public class SkillBasedOrchestrator {
     public Map<String, Object> orchestrateTask(String taskDescription, String context) {
         long start = System.currentTimeMillis();
 
-        System.out.println("[SkillBasedOrchestrator] 🎯 Analyzing task: " + taskDescription);
+        logger.info("Analyzing task: {}", taskDescription);
 
         // 1. Extract required skills from task description
         List<String> requiredSkills = extractSkills(taskDescription);
-        System.out.println("[SkillBasedOrchestrator] Required skills: " + requiredSkills);
+        logger.debug("Required skills: {}", requiredSkills);
 
         // 2. Group skills by domain
         Map<String, List<String>> skillsByDomain = groupSkillsByDomain(requiredSkills);
-        System.out.println("[SkillBasedOrchestrator] Domains: " + skillsByDomain.keySet());
+        logger.debug("Domains: {}", skillsByDomain.keySet());
 
         // 3. Select best agents for each domain (1-2 agents per domain)
         Map<String, List<AgentSkillMatch>> selectedAgents = selectAgentsForDomains(skillsByDomain);
@@ -61,7 +65,7 @@ public class SkillBasedOrchestrator {
         results.put("required_skills", requiredSkills);
         results.put("domains", skillsByDomain.keySet());
 
-        System.out.println("[SkillBasedOrchestrator] ✅ Task completed in " + elapsed + "ms");
+        logger.info("Task completed in {}ms", elapsed);
         return results;
     }
 
@@ -161,10 +165,9 @@ public class SkillBasedOrchestrator {
 
             selectedAgents.put(domain, topAgents);
 
-            System.out.println("[SkillBasedOrchestrator] Domain: " + domain + 
-                             " -> Selected agents: " + topAgents.stream()
-                             .map(a -> a.agentName + "(" + a.matchScore + ")")
-                             .collect(Collectors.joining(", ")));
+                logger.debug("Domain: {} -> Selected agents: {}", domain,
+                    topAgents.stream().map(a -> a.agentName + "(" + a.matchScore + ")")
+                        .collect(Collectors.joining(", ")));
         }
 
         return selectedAgents;
@@ -239,8 +242,7 @@ public class SkillBasedOrchestrator {
                         domainResults.add((Map<String, Object>) agentResult);
                     }
                 } catch (Exception e) {
-                    System.err.println("[SkillBasedOrchestrator] Error executing " + agentName + 
-                                     ": " + e.getMessage());
+                    logger.error("Error executing {}", agentName, e);
                     domainResults.add(Map.of(
                             "agent", agentName,
                             "error", e.getMessage(),

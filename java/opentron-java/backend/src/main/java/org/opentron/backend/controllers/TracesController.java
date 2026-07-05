@@ -1,5 +1,7 @@
 package org.opentron.backend.controllers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,8 @@ import org.opentron.backend.storage.entities.TraceLog;
 @RestController
 @RequestMapping("/v1/traces")
 public class TracesController {
+
+    private static final Logger logger = LoggerFactory.getLogger(TracesController.class);
 
     @Autowired
     private StorageService storageService;
@@ -55,10 +59,10 @@ public class TracesController {
             response.put("source", "postgresql");
             response.put("timestamp", System.currentTimeMillis());
             
-            System.out.println("[TracesController] 📋 Loaded " + traces.size() + " traces from database");
+            logger.info("Loaded {} traces from database", traces.size());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.err.println("[TracesController] ⚠️ Error loading from database: " + e.getMessage());
+            logger.warn("Error loading traces from database", e);
             
             // Fallback to mock data if database unavailable
             List<Map<String, Object>> traces = new ArrayList<>();
@@ -150,10 +154,10 @@ public class TracesController {
             response.put("agent", agentId);
             response.put("source", "postgresql");
             
-            System.out.println("[TracesController] 📊 Loaded " + traceList.size() + " traces for " + agentId);
+            logger.info("Loaded {} traces for {}", traceList.size(), agentId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.err.println("[TracesController] ❌ Error loading traces for agent: " + e.getMessage());
+            logger.error("Error loading traces for agent {}", agentId, e);
             Map<String, Object> errorMap = new HashMap<>();
             errorMap.put("error", e.getMessage());
             return ResponseEntity.status(500).body(errorMap);

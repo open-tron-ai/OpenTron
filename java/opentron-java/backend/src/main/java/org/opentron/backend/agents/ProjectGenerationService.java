@@ -3,6 +3,8 @@ package org.opentron.backend.agents;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -19,6 +21,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class ProjectGenerationService {
 
+    private static final Logger logger = LoggerFactory.getLogger(ProjectGenerationService.class);
+
     private final SkillBasedOrchestrator orchestrator;
     private final MultiAgentCoordinator coordinator;
 
@@ -33,8 +37,8 @@ public class ProjectGenerationService {
     public Map<String, Object> generateProject(String projectName, String description, String type) {
         long start = System.currentTimeMillis();
 
-        System.out.println("[ProjectGenerator] 🚀 Generating project: " + projectName);
-        System.out.println("[ProjectGenerator] Type: " + type + ", Description: " + description);
+        logger.info("Generating project: {}", projectName);
+        logger.debug("Type: {}, Description: {}", type, description);
 
         try {
             // 1. Parse project type and requirements
@@ -55,11 +59,10 @@ public class ProjectGenerationService {
             projectStructure.put("elapsed_ms", elapsed);
             projectStructure.put("generated_at", LocalDateTime.now());
 
-            System.out.println("[ProjectGenerator] ✅ Project generated in " + elapsed + "ms");
+            logger.info("Project generated in {}ms", elapsed);
             return projectStructure;
         } catch (Exception e) {
-            System.err.println("[ProjectGenerator] ❌ Error: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error generating project {}", projectName, e);
             return Map.of(
                     "status", "error",
                     "error", e.getMessage(),
@@ -115,7 +118,7 @@ public class ProjectGenerationService {
                                                         ProjectConfig config) {
         Map<String, Object> artifacts = new LinkedHashMap<>();
 
-        System.out.println("[ProjectGenerator] 📝 Generating " + config.domain + " artifacts...");
+        logger.info("Generating {} artifacts...", config.domain);
 
         // Get appropriate agent based on domain
         String agentName = getAgentForDomain(config.domain);
@@ -211,8 +214,7 @@ public class ProjectGenerationService {
 
             files.put(filename, content);
 
-            System.out.println("[ProjectGenerator] Generated file: " + filename + 
-                             " (" + content.length() + " bytes)");
+            logger.debug("Generated file: {} ({} bytes)", filename, content.length());
         }
 
         // If no files parsed, create default files
@@ -271,7 +273,7 @@ public class ProjectGenerationService {
      */
     private void storeProjectArtifacts(String projectName, Map<String, Object> project) {
         // Store in database (implement with JPA repository)
-        System.out.println("[ProjectGenerator] 💾 Storing project in PostgreSQL: " + projectName);
+        logger.info("Storing project in PostgreSQL: {}", projectName);
 
         // This would call a repository to store:
         // - Project metadata

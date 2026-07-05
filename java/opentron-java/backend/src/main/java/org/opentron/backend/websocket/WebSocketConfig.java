@@ -14,12 +14,21 @@ import java.util.Map;
 public class WebSocketConfig {
 
     @Bean
-    public HandlerMapping webSocketMapping(WebSocketHandler chatWebSocketHandler) {
-        Map<String, WebSocketHandler> map = Collections.singletonMap("/v1/chat/stream", chatWebSocketHandler);
+    public HandlerMapping webSocketMapping(WebSocketHandler chatWebSocketHandler,
+                                          AgentEventsWebSocketHandler agentEventsWebSocketHandler) {
+        Map<String, WebSocketHandler> map = Map.of(
+            "/v1/chat/stream", chatWebSocketHandler,
+            "/v1/agents/events", agentEventsWebSocketHandler
+        );
         SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();
         mapping.setUrlMap(map);
         mapping.setOrder(10);
         return mapping;
+    }
+
+    @Bean
+    public AgentEventsWebSocketHandler agentEventsWebSocketHandler() {
+        return new AgentEventsWebSocketHandler();
     }
 
     @Bean

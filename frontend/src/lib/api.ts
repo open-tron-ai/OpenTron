@@ -26,14 +26,33 @@ export async function initApiBase(): Promise<void> {
 
 const DESKTOP_API_FALLBACK = 'http://127.0.0.1:8000';
 
-const getSettingsApiUrl = (): string => {
+interface OpentronSettings {
+  apiUrl?: string;
+  apiKey?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Shared helper to load Opentron settings from localStorage
+ * Avoids duplication and centralizes error handling
+ */
+const loadSettings = (): OpentronSettings => {
   try {
-    const raw = localStorage.getItem('opentron-settings');
+    const raw = localStorage.getItem('OpenTron-settings');
     if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.apiUrl) return parsed.apiUrl.replace(/\/+$/, '');
+      return JSON.parse(raw) as OpentronSettings;
     }
-  } catch {}
+  } catch (e) {
+    console.error('[api] Failed to load settings from localStorage', e);
+  }
+  return {};
+};
+
+const getSettingsApiUrl = (): string => {
+  const settings = loadSettings();
+  if (settings.apiUrl) {
+    return settings.apiUrl.replace(/\/+$/, '');
+  }
   return '';
 };
 
@@ -46,27 +65,66 @@ export const getBase = (): string => {
 };
 
 export const getApiKey = (): string => {
-  try {
-    const raw = localStorage.getItem('opentron-settings');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.apiKey) return String(parsed.apiKey);
-    }
-  } catch {}
+  const settings = loadSettings();
+  if (settings.apiKey) {
+    return String(settings.apiKey);
+  }
   if (import.meta.env.VITE_OPENTRON_API_KEY) {
     return import.meta.env.VITE_OPENTRON_API_KEY as string;
   }
   return '';
 };
 
-export const authHeaders = (extra: Record<string, string> = {}): Record<string, string> => {
+export const authHeaders = (extra?: Record<string, string>): Headers => {
+  const headers = new Headers(extra || {});
   const key = getApiKey();
-  return key ? { ...extra, Authorization: `Bearer ${key}` } : { ...extra };
+  if (key) {
+    headers.set('Authorization', `Bearer ${key}`);
+  }
+  return headers;
 };
 
+function getCloudApiKeys(): Record<string, string> {
+  const keys: Record<string, string> = {};
+
+  try {
+    const openaiKey = localStorage.getItem('OpenTron-openai-key');
+    if (openaiKey) keys.openai = openaiKey;
+
+    const anthropicKey = localStorage.getItem('OpenTron-anthropic-key');
+    if (anthropicKey) keys.anthropic = anthropicKey;
+
+    const geminiKey = localStorage.getItem('OpenTron-gemini-key');
+    if (geminiKey) keys.google = geminiKey;
+
+    const openrouterKey = localStorage.getItem('OpenTron-openrouter-key');
+    if (openrouterKey) keys.openrouter = openrouterKey;
+  } catch (e) {
+    console.error('[api] Failed to read cloud API keys from localStorage', e);
+  }
+
+  return keys;
+}
+
 export const apiFetch = (path: string, init: RequestInit = {}): Promise<Response> => {
-  const headers = authHeaders((init.headers as Record<string, string> | undefined) ?? {});
-  return fetch(`${getBase()}${path}`, { ...init, headers });
+  // Normalize headers to Headers object for proper merging
+  const headers = new Headers(init.headers);
+  const authHead = authHeaders();
+
+  // Merge auth headers with request headers
+  authHead.forEach((value, key) => {
+    headers.set(key, value);
+  });
+
+  const cloudApiKeys = getCloudApiKeys();
+  if (Object.keys(cloudApiKeys).length > 0) {
+    headers.set('X-API-Keys', JSON.stringify(cloudApiKeys));
+  }
+
+  // Pass through AbortSignal if provided
+  const signal = init.signal;
+
+  return fetch(`${getBase()}${path}`, { ...init, headers, signal });
 };
 
 async function tauriInvoke<T>(command: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -118,12 +176,12 @@ export async function fetchRecommendedModel(): Promise<{ model: string; reason: 
   return res.json();
 }
 
-export async function pullModel(modelName: string): Promise<void> {
+export async function pullModel(modelName: string): Promise<string> {
   if (isTauri()) {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('pull_ollama_model', { modelName });
-      return;
+      return '';
     } catch (e: any) {
       throw new Error(e?.message || e || 'Download failed');
     }
@@ -137,6 +195,14 @@ export async function pullModel(modelName: string): Promise<void> {
     const detail = await res.text().catch(() => res.statusText);
     throw new Error(`Failed to pull model: ${detail}`);
   }
+  const body = await res.json().catch(() => null);
+  return body?.job_id || '';
+}
+
+export async function getPullStatus(jobId: string): Promise<any> {
+  const res = await apiFetch(`/v1/models/pull/${encodeURIComponent(jobId)}`);
+  if (!res.ok) throw new Error(`Failed to get pull status: ${res.status}`);
+  return res.json();
 }
 
 export async function deleteModel(modelName: string): Promise<void> {

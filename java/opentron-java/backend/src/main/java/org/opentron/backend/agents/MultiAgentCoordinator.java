@@ -3,7 +3,10 @@ package org.opentron.backend.agents;
 import java.util.*;
 import java.util.concurrent.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.opentron.backend.telemetry.TelemetryService;
+import org.opentron.backend.util.CloudModelService;
 import org.opentron.backend.util.OllamaCliService;
 import org.opentron.backend.util.HuggingFaceService;
 import org.opentron.backend.services.ModelSelectorService;
@@ -17,9 +20,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class MultiAgentCoordinator {
 
+    private static final Logger logger = LoggerFactory.getLogger(MultiAgentCoordinator.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final OllamaCliService ollamaService;
     private final HuggingFaceService huggingFaceService;
+    private final CloudModelService cloudModelService;
     private final ModelSelectorService modelSelectorService;
     @Autowired(required = false)
     private TelemetryService telemetryService;
@@ -30,16 +35,18 @@ public class MultiAgentCoordinator {
         return agents.get(name);
     }
     
-    public MultiAgentCoordinator(OllamaCliService ollamaService, HuggingFaceService huggingFaceService, ModelSelectorService modelSelectorService) {
+    public MultiAgentCoordinator(OllamaCliService ollamaService, HuggingFaceService huggingFaceService,
+                                 ModelSelectorService modelSelectorService, CloudModelService cloudModelService) {
         this.ollamaService = ollamaService;
         this.huggingFaceService = huggingFaceService;
         this.modelSelectorService = modelSelectorService;
+        this.cloudModelService = cloudModelService;
         try {
             initializeAgents();
             startMessageProcessor();
-            System.out.println("[MultiAgentCoordinator] OK - Initialized with intelligent model selection");
+            logger.info("Initialized with intelligent model selection");
         } catch (Exception e) {
-            System.err.println("[MultiAgentCoordinator] Init error: " + e.getMessage());
+            logger.error("Initialization error", e);
             if (agents.isEmpty()) {
                 initializeAgentsWithDefaults();
             }
@@ -47,8 +54,8 @@ public class MultiAgentCoordinator {
     }
 
     private void initializeAgentsWithDefaults() {
-        System.out.println("[MultiAgentCoordinator] Using fallback initialization with default models");
-        AgentLLMBridge llmBridge = new AgentLLMBridge(ollamaService, huggingFaceService, "mistral");
+        logger.info("Using fallback initialization with default models");
+        AgentLLMBridge llmBridge = new AgentLLMBridge(ollamaService, huggingFaceService, cloudModelService, "mistral", null);
         
         agents.put("coordinator", new CoordinatorAgent(llmBridge));
         agents.put("backend", new BackendSpecialist(llmBridge));
@@ -58,39 +65,39 @@ public class MultiAgentCoordinator {
     }
 
     private void initializeAgents() {
-        System.out.println("[MultiAgentCoordinator] Initializing with intelligent model selection...");
+        initializeAgents(null);
+    }
+
+    private void initializeAgents(Map<String, String> apiKeyOverrides) {
+        logger.info("Initializing with intelligent model selection...");
         
         // Select best model for each specialist
         String coordinatorModel = "mistral"; // Coordinator stays on mistral
-        String backendModel = modelSelectorService.selectBestModel("backend");
-        String frontendModel = modelSelectorService.selectBestModel("frontend");
-        String qaModel = modelSelectorService.selectBestModel("qa");
-        String devopsModel = modelSelectorService.selectBestModel("devops");
+        String backendModel = modelSelectorService.selectBestModel("backend", apiKeyOverrides);
+        String frontendModel = modelSelectorService.selectBestModel("frontend", apiKeyOverrides);
+        String qaModel = modelSelectorService.selectBestModel("qa", apiKeyOverrides);
+        String devopsModel = modelSelectorService.selectBestModel("devops", apiKeyOverrides);
         
-        System.out.println("[MultiAgentCoordinator] Model assignments:");
-        System.out.println("  Backend: " + backendModel);
-        System.out.println("  Frontend: " + frontendModel);
-        System.out.println("  QA: " + qaModel);
-        System.out.println("  DevOps: " + devopsModel);
+        logger.info("Model assignments: Backend={}, Frontend={}, QA={}, DevOps={}", backendModel, frontendModel, qaModel, devopsModel);
         
         // Create coordinator with its model
-        AgentLLMBridge coordinatorBridge = new AgentLLMBridge(ollamaService, huggingFaceService, coordinatorModel);
+        AgentLLMBridge coordinatorBridge = new AgentLLMBridge(ollamaService, huggingFaceService, cloudModelService, coordinatorModel, apiKeyOverrides);
         agents.put("coordinator", new CoordinatorAgent(coordinatorBridge));
         
         // Create specialists with THEIR optimized models
-        AgentLLMBridge backendBridge = new AgentLLMBridge(ollamaService, huggingFaceService, backendModel);
+        AgentLLMBridge backendBridge = new AgentLLMBridge(ollamaService, huggingFaceService, cloudModelService, backendModel, apiKeyOverrides);
         agents.put("backend", new BackendSpecialist(backendBridge));
         
-        AgentLLMBridge frontendBridge = new AgentLLMBridge(ollamaService, huggingFaceService, frontendModel);
+        AgentLLMBridge frontendBridge = new AgentLLMBridge(ollamaService, huggingFaceService, cloudModelService, frontendModel, apiKeyOverrides);
         agents.put("frontend", new FrontendSpecialist(frontendBridge));
         
-        AgentLLMBridge qaBridge = new AgentLLMBridge(ollamaService, huggingFaceService, qaModel);
+        AgentLLMBridge qaBridge = new AgentLLMBridge(ollamaService, huggingFaceService, cloudModelService, qaModel, apiKeyOverrides);
         agents.put("qa", new QAAgent(qaBridge));
         
-        AgentLLMBridge devopsBridge = new AgentLLMBridge(ollamaService, huggingFaceService, devopsModel);
+        AgentLLMBridge devopsBridge = new AgentLLMBridge(ollamaService, huggingFaceService, cloudModelService, devopsModel, apiKeyOverrides);
         agents.put("devops", new DevOpsAgent(devopsBridge));
         
-        System.out.println("[MultiAgentCoordinator] Initialized " + agents.size() + " agents with optimized models");
+        logger.info("Initialized {} agents with optimized models", agents.size());
     }
 
     private void startMessageProcessor() {
@@ -106,7 +113,7 @@ public class MultiAgentCoordinator {
                             long start = System.currentTimeMillis();
                             Object result = agent.process(msg);
                             long elapsed = System.currentTimeMillis() - start;
-                            System.out.println("[" + msg.targetAgent + "] Processed in " + elapsed + "ms");
+                            logger.debug("[{}] Processed in {}ms", msg.targetAgent, elapsed);
                         }
                     }
                 } catch (InterruptedException e) {
@@ -122,19 +129,28 @@ public class MultiAgentCoordinator {
         void onAgentStart(String agent);
         void onAgentDone(String agent, Map<String, Object> result);
         void onAgentError(String agent, String error);
+        void onStatus(String status);
     }
 
     public Map<String, Object> processRequest(String userRequest, String context) {
-        return processRequest(userRequest, context, null);
+        return processRequest(userRequest, context, null, null);
     }
 
     public Map<String, Object> processRequest(String userRequest, String context, StreamingCoordinatorCallback callback) {
-        System.out.println("[Coordinator] Processing: " + userRequest);
+        return processRequest(userRequest, context, callback, null);
+    }
+
+    public Map<String, Object> processRequest(String userRequest, String context, StreamingCoordinatorCallback callback, Map<String, String> apiKeyOverrides) {
+        logger.info("Processing coordinator request with overrides={}", apiKeyOverrides);
         
         long start = System.currentTimeMillis();
         
         try {
-            if (agents.isEmpty()) {
+            if (apiKeyOverrides != null && !apiKeyOverrides.isEmpty()) {
+                logger.info("Reinitializing agent models using API-key overrides");
+                agents.clear();
+                initializeAgents(apiKeyOverrides);
+            } else if (agents.isEmpty()) {
                 initializeAgentsWithDefaults();
             }
             
@@ -151,10 +167,10 @@ public class MultiAgentCoordinator {
             response.put("elapsed_ms", totalTime);
             response.put("agents_used", result.get("agents_used"));
             
-            System.out.println("[Coordinator] Completed in " + totalTime + "ms");
+            logger.info("Coordinator completed in {}ms", totalTime);
             return response;
         } catch (Exception e) {
-            System.err.println("[Coordinator] Error: " + e.getMessage());
+            logger.error("Coordinator error", e);
             long totalTime = System.currentTimeMillis() - start;
             
             Map<String, Object> response = new HashMap<>();
@@ -169,7 +185,7 @@ public class MultiAgentCoordinator {
         try {
             messageQueue.offer(msg);
         } catch (Exception e) {
-            System.err.println("[Coordinator] Message error: " + e.getMessage());
+            logger.error("Coordinator message error", e);
         }
     }
 
@@ -185,7 +201,7 @@ public class MultiAgentCoordinator {
             }
             return statuses;
         } catch (Exception e) {
-            System.err.println("[Coordinator] Status error: " + e.getMessage());
+            logger.error("Error building agent statuses", e);
             return new HashMap<>();
         }
     }
@@ -238,10 +254,13 @@ public class MultiAgentCoordinator {
             TelemetryService ts = coordinator.telemetryService;
             if (ts != null) ts.recordRequest();
 
-            List<String> requiredAgents = analyzeRequest(userRequest);
+            // Send status update
+            if (callback != null) callback.onStatus("Analyzing request and routing to specialist agents...");
+
+            List<String> requiredAgents = analyzeRequest(userRequest, context);
             agentsUsed.addAll(requiredAgents);
 
-            System.out.println("[Coordinator] Required agents: " + requiredAgents);
+            logger.info("Required agents: {}", requiredAgents);
 
             List<Future<Map<String, Object>>> futures = new ArrayList<>();
             try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
@@ -280,11 +299,11 @@ public class MultiAgentCoordinator {
                             if (tokensObj instanceof Number) {
                                 long tokens = ((Number) tokensObj).longValue();
                                 ts.addTokens(tokens);
-                                System.out.println("[Coordinator] Tracked " + tokens + " tokens from " + requiredAgents.get(i));
+                                logger.debug("Tracked {} tokens from {}", tokens, requiredAgents.get(i));
                             }
                         }
-                    } catch (Exception e) {
-                        System.err.println("[Coordinator] " + requiredAgents.get(i) + " error: " + e.getMessage());
+                        } catch (Exception e) {
+                            logger.error("{} agent error", requiredAgents.get(i), e);
                         taskResults.put(requiredAgents.get(i), Map.of("error", e.getMessage() != null ? e.getMessage() : "unknown"));
                     }
                 }
@@ -335,26 +354,28 @@ public class MultiAgentCoordinator {
             return response.toString();
         }
 
-        private List<String> analyzeRequest(String request) {
+        private List<String> analyzeRequest(String request, String context) {
             List<String> agents = new ArrayList<>();
             String lower = request.toLowerCase();
+            String contextLower = (context != null ? context : "").toLowerCase();
+            String combinedContent = lower + " " + contextLower;
 
-            if (lower.contains("backend") || lower.contains("java") || lower.contains("database") || 
-                lower.contains("api") || lower.contains("spring") || lower.contains("cache")) {
+            if (combinedContent.contains("backend") || combinedContent.contains("java") || combinedContent.contains("database") || 
+                combinedContent.contains("api") || combinedContent.contains("spring") || combinedContent.contains("cache")) {
                 agents.add("backend");
             }
 
-            if (lower.contains("frontend") || lower.contains("react") || lower.contains("ui") || 
-                lower.contains("component") || lower.contains("typescript")) {
+            if (combinedContent.contains("frontend") || combinedContent.contains("react") || combinedContent.contains("ui") || 
+                combinedContent.contains("component") || combinedContent.contains("typescript")) {
                 agents.add("frontend");
             }
 
-            if (lower.contains("test") || lower.contains("debug") || lower.contains("fix") || 
-                lower.contains("review")) {
+            if (combinedContent.contains("test") || combinedContent.contains("debug") || combinedContent.contains("fix") || 
+                combinedContent.contains("review")) {
                 agents.add("qa");
             }
 
-            if (lower.contains("monitor") || lower.contains("metrics") || lower.contains("health")) {
+            if (combinedContent.contains("monitor") || combinedContent.contains("metrics") || combinedContent.contains("health")) {
                 agents.add("devops");
             }
 

@@ -60,10 +60,10 @@ public class ManagedAgentsController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createManagedAgent(@RequestBody Map<String, Object> payload) {
-        String name = (String) payload.getOrDefault("name", "New Agent");
-        String templateId = (String) payload.getOrDefault("template_id", "");
-        Map<String, Object> config = (Map<String, Object>) payload.getOrDefault("config", new HashMap<>());
+    public ResponseEntity<Map<String, Object>> createManagedAgent(@RequestBody org.opentron.backend.dto.ManagedAgentCreateRequest payload) {
+        String name = payload.getName() == null ? "New Agent" : payload.getName();
+        String templateId = payload.getTemplate_id() == null ? "" : payload.getTemplate_id();
+        Map<String, Object> config = payload.getConfig() == null ? new HashMap<>() : payload.getConfig();
 
         String id = "agent-" + UUID.randomUUID().toString().substring(0, 8);
         long now = System.currentTimeMillis() / 1000;
@@ -106,15 +106,15 @@ public class ManagedAgentsController {
     }
 
     @PatchMapping("/{agentId}")
-    public ResponseEntity<Map<String, Object>> updateManagedAgent(@PathVariable String agentId, @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Map<String, Object>> updateManagedAgent(@PathVariable String agentId, @RequestBody org.opentron.backend.dto.ManagedAgentUpdateRequest payload) {
         ManagedAgent agent = agents.get(agentId);
         if (agent == null) {
             return ResponseEntity.notFound().build();
         }
         
         // Update config
-        if (payload.containsKey("config")) {
-            Map<String, Object> newConfig = (Map<String, Object>) payload.get("config");
+        if (payload.getConfig() != null) {
+            Map<String, Object> newConfig = payload.getConfig();
             if (newConfig.containsKey("model")) {
                 agent.model = (String) newConfig.get("model");
             }
@@ -198,13 +198,13 @@ public class ManagedAgentsController {
     }
 
     @PostMapping("/{agentId}/ask")
-    public ResponseEntity<Map<String, Object>> askAgent(@PathVariable String agentId, @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Map<String, Object>> askAgent(@PathVariable String agentId, @RequestBody org.opentron.backend.dto.ManagedAgentAskRequest payload) {
         ManagedAgent agent = agents.get(agentId);
         if (agent == null) {
             return ResponseEntity.notFound().build();
         }
         
-        String question = (String) payload.get("question");
+        String question = payload.getQuestion();
         
         agent.status = "running";
         agent.last_run_at = System.currentTimeMillis() / 1000;
@@ -222,6 +222,99 @@ public class ManagedAgentsController {
         return ResponseEntity.ok(Map.of(
             "success", true,
             "agent_id", agentId
+        ));
+    }
+
+    @GetMapping("/{agentId}/state")
+    public ResponseEntity<Map<String, Object>> getAgentState(@PathVariable String agentId) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(Map.of(
+            "agent_id", agentId,
+            "status", agent.status,
+            "total_runs", agent.total_runs,
+            "last_run_at", agent.last_run_at,
+            "timestamp", System.currentTimeMillis()
+        ));
+    }
+
+    @GetMapping("/{agentId}/messages")
+    public ResponseEntity<Map<String, Object>> getAgentMessages(@PathVariable String agentId) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(Map.of(
+            "agent_id", agentId,
+            "messages", new ArrayList<>(),
+            "total", 0
+        ));
+    }
+
+    @GetMapping("/{agentId}/tasks")
+    public ResponseEntity<Map<String, Object>> getAgentTasks(@PathVariable String agentId) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(Map.of(
+            "agent_id", agentId,
+            "tasks", new ArrayList<>(),
+            "total", 0
+        ));
+    }
+
+    @PostMapping("/{agentId}/learning/trigger")
+    public ResponseEntity<Map<String, Object>> triggerLearning(@PathVariable String agentId) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(Map.of(
+            "agent_id", agentId,
+            "learning_triggered", true,
+            "status", "processing"
+        ));
+    }
+
+    @GetMapping("/{agentId}/learning")
+    public ResponseEntity<Map<String, Object>> getLearningStatus(@PathVariable String agentId) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(Map.of(
+            "agent_id", agentId,
+            "learning_enabled", agent.learning_enabled,
+            "last_update", agent.updated_at
+        ));
+    }
+
+    @GetMapping("/{agentId}/traces")
+    public ResponseEntity<Map<String, Object>> getAgentTraces(@PathVariable String agentId) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(Map.of(
+            "agent_id", agentId,
+            "traces", new ArrayList<>(),
+            "total", 0
+        ));
+    }
+
+    @GetMapping("/{agentId}/traces/{traceId}")
+    public ResponseEntity<Map<String, Object>> getAgentTrace(@PathVariable String agentId, @PathVariable String traceId) {
+        ManagedAgent agent = agents.get(agentId);
+        if (agent == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(Map.of(
+            "agent_id", agentId,
+            "trace_id", traceId,
+            "trace", Map.of()
         ));
     }
 

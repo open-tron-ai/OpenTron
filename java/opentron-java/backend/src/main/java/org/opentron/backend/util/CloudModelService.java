@@ -1,15 +1,15 @@
 package org.opentron.backend.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * CloudModelService: Handle cloud API models (OpenAI, Anthropic, Google, etc.)
@@ -19,6 +19,7 @@ import java.util.Map;
 public class CloudModelService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Logger logger = LoggerFactory.getLogger(CloudModelService.class);
 
     /**
      * Determine which cloud provider to use based on model name
@@ -91,34 +92,43 @@ public class CloudModelService {
         
         // First, try to get from frontend overrides (highest priority)
         if (apiKeyOverrides != null) {
+            // Support common aliases frontend may use when naming keys
+            List<String> aliases = new ArrayList<>();
             switch (provider) {
                 case "openai":
-                    key = apiKeyOverrides.get("openai");
+                    aliases = List.of("openai", "openai_api_key", "openaiKey");
                     break;
                 case "anthropic":
-                    key = apiKeyOverrides.get("anthropic");
+                    aliases = List.of("anthropic", "claude", "claude_api_key");
                     break;
                 case "google":
-                    key = apiKeyOverrides.get("google");
+                    aliases = List.of("google", "gemini", "google_api_key", "gemini_api_key");
                     break;
                 case "openrouter":
-                    key = apiKeyOverrides.get("openrouter");
+                    aliases = List.of("openrouter", "openrouter_api_key");
                     break;
                 case "minimax":
-                    key = apiKeyOverrides.get("minimax");
+                    aliases = List.of("minimax", "minimax_api_key");
                     break;
+                default:
+                    aliases = List.of(provider);
             }
-            
-            if (key != null && !key.isBlank()) {
-                System.out.println("[CloudModelService] 🔑 Using frontend-provided API key for " + provider);
-                return key;
+
+            for (String alias : aliases) {
+                if (apiKeyOverrides.containsKey(alias)) {
+                    key = apiKeyOverrides.get(alias);
+                    if (key != null && !key.isBlank()) {
+                        logger.debug("Using frontend-provided API key for {} (alias={})", provider, alias);
+                        return key;
+                    }
+                }
             }
         }
 
         // Fall back to environment variables if frontend key not provided
         key = getApiKey(provider);
         if (key != null && !key.isBlank()) {
-            System.out.println("[CloudModelService] 🔑 Using environment variable API key for " + provider);
+            logger.debug("Using environment variable API key for {}", provider);
             return key;
         }
         
@@ -126,10 +136,161 @@ public class CloudModelService {
     }
 
     /**
+     * Check whether a cloud provider has an API key configured.
+     */
+    public boolean hasApiKey(String provider) {
+        return hasApiKey(provider, null);
+    }
+
+    public boolean hasApiKey(String provider, Map<String, String> apiKeyOverrides) {
+        String key = getApiKey(provider, apiKeyOverrides);
+        return key != null && !key.isBlank();
+    }
+
+    /**
+     * List available cloud models from configured providers.
+     */
+    public Mono<List<String>> listModels() {
+        return listModels(null);
+    }
+
+    public Mono<List<String>> listModels(Map<String, String> apiKeyOverrides) {
+        return Mono.fromCallable(() -> {
+            logger.info("CloudModelService listModels overrides={}", apiKeyOverrides);
+            List<String> models = new ArrayList<>();
+
+            if (hasApiKey("openrouter", apiKeyOverrides)) {
+                try {
+                    models.addAll(listOpenRouterModels(apiKeyOverrides));
+                } catch (Exception e) {
+                    logger.warn("Unable to list OpenRouter models", e);
+                }
+            }
+
+            if (hasApiKey("google", apiKeyOverrides)) {
+                try {
+                    models.addAll(listGoogleModels(apiKeyOverrides));
+                } catch (Exception e) {
+                    logger.warn("Unable to list Google Gemini models", e);
+                }
+            }
+
+            if (hasApiKey("anthropic", apiKeyOverrides) && models.stream().noneMatch(m -> m.startsWith("claude-"))) {
+                models.addAll(List.of(
+                    "claude-opus-4-6",
+                    "claude-sonnet-4-6",
+                    "claude-haiku-4-5"
+                ));
+            }
+            if (hasApiKey("openrouter", apiKeyOverrides) && models.stream().noneMatch(m -> m.startsWith("openrouter/claude-"))) {
+                models.addAll(List.of(
+                    "openrouter/auto",
+                    "openrouter/deepseek/deepseek-r1",
+                    "openrouter/anthropic/claude-sonnet-4"
+                ));
+            }
+            if (hasApiKey("google", apiKeyOverrides) && models.stream().noneMatch(m -> m.startsWith("gemini-"))) {
+                models.addAll(List.of(
+                    "gemini-2.5-pro",
+                    "gemini-2.5-flash",
+                    "gemini-3-pro"
+                ));
+            }
+
+            return models.stream().filter(Objects::nonNull).map(String::trim)
+                .filter(s -> !s.isEmpty()).distinct().toList();
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private List<String> listOpenRouterModels(Map<String, String> apiKeyOverrides) throws Exception {
+        String apiKey = getApiKey("openrouter", apiKeyOverrides);
+        if (apiKey == null || apiKey.isBlank()) {
+            return List.of();
+        }
+
+        java.net.URL url = new java.net.URL("https://openrouter.ai/api/v1/models");
+        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+        conn.setRequestProperty("Accept", "application/json");
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(10000);
+
+        if (conn.getResponseCode() != 200) {
+            logger.warn("OpenRouter listModels returned {}", conn.getResponseCode());
+            return List.of();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"))) {
+            String line;
+            while ((line = br.readLine()) != null) sb.append(line);
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = objectMapper.readValue(sb.toString(), Map.class);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> data = (List<Map<String, Object>>) response.get("data");
+        List<String> models = new ArrayList<>();
+        if (data != null) {
+            for (Map<String, Object> item : data) {
+                Object id = item.get("id");
+                Object name = item.get("name");
+                if (id != null) {
+                    models.add(id.toString());
+                } else if (name != null) {
+                    models.add(name.toString());
+                }
+            }
+        }
+        return models;
+    }
+
+    private List<String> listGoogleModels(Map<String, String> apiKeyOverrides) throws Exception {
+        String apiKey = getApiKey("google", apiKeyOverrides);
+        if (apiKey == null || apiKey.isBlank()) {
+            return List.of();
+        }
+
+        java.net.URL url = new java.net.URL("https://generativelanguage.googleapis.com/v1/models?key=" + apiKey);
+        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.setRequestProperty("Accept", "application/json");
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(10000);
+
+        if (conn.getResponseCode() != 200) {
+            logger.warn("Google Gemini listModels returned {}", conn.getResponseCode());
+            return List.of();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"))) {
+            String line;
+            while ((line = br.readLine()) != null) sb.append(line);
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = objectMapper.readValue(sb.toString(), Map.class);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> models = (List<Map<String, Object>>) response.get("models");
+        List<String> results = new ArrayList<>();
+        if (models != null) {
+            for (Map<String, Object> model : models) {
+                Object name = model.get("name");
+                if (name != null) {
+                    results.add(name.toString());
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
      * Call OpenAI API
      */
     private Map<String, Object> callOpenAI(String model, String apiKey, List<Map<String, String>> messages) throws Exception {
-        System.out.println("[CloudModelService] 🔗 Calling OpenAI: " + model);
+        logger.info("Calling OpenAI: {}", model);
         
         java.net.URL url = new java.net.URL("https://api.openai.com/v1/chat/completions");
         java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
@@ -154,12 +315,12 @@ public class CloudModelService {
         }
 
         int responseCode = conn.getResponseCode();
-        if (responseCode != 200) {
+            if (responseCode != 200) {
             try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "UTF-8"))) {
                 StringBuilder sb = new StringBuilder();
                 String line;
                 while ((line = br.readLine()) != null) sb.append(line);
-                System.err.println("[CloudModelService] ❌ OpenAI error " + responseCode + ": " + sb);
+                logger.error("OpenAI error {}: {}", responseCode, sb.toString());
             }
             throw new RuntimeException("OpenAI API error: " + responseCode);
         }
@@ -200,16 +361,55 @@ public class CloudModelService {
             result.put("choices", List.of(choiceResult));
             result.put("usage", response.get("usage"));
             
-            System.out.println("[CloudModelService] ✅ OpenAI response: " + content.length() + " chars");
+            logger.info("OpenAI response length: {} chars", content.length());
             return result;
         }
+    }
+
+    Map<String, Object> buildAnthropicPayload(String model, List<Map<String, String>> messages, double temperature, int maxTokens) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("model", model);
+        payload.put("temperature", temperature);
+        payload.put("max_tokens", maxTokens);
+
+        String systemPrompt = null;
+        List<Map<String, Object>> anthropicMessages = new ArrayList<>();
+
+        for (Map<String, String> message : messages == null ? Collections.<Map<String, String>>emptyList() : messages) {
+            if (message == null) {
+                continue;
+            }
+            String role = message.get("role");
+            String content = message.get("content");
+            if (role == null || role.isBlank()) {
+                continue;
+            }
+
+            if ("system".equalsIgnoreCase(role)) {
+                if (systemPrompt == null || systemPrompt.isBlank()) {
+                    systemPrompt = content == null ? "" : content;
+                }
+                continue;
+            }
+
+            Map<String, Object> anthropicMessage = new LinkedHashMap<>();
+            anthropicMessage.put("role", role);
+            anthropicMessage.put("content", content == null ? "" : content);
+            anthropicMessages.add(anthropicMessage);
+        }
+
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            payload.put("system", systemPrompt);
+        }
+        payload.put("messages", anthropicMessages);
+        return payload;
     }
 
     /**
      * Call Anthropic (Claude) API
      */
     private Map<String, Object> callAnthropic(String model, String apiKey, List<Map<String, String>> messages) throws Exception {
-        System.out.println("[CloudModelService] 🔗 Calling Anthropic (Claude): " + model);
+        logger.info("Calling Anthropic (Claude): {}", model);
         
         java.net.URL url = new java.net.URL("https://api.anthropic.com/v1/messages");
         java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
@@ -221,11 +421,7 @@ public class CloudModelService {
         conn.setReadTimeout(60000);
         conn.setDoOutput(true);
 
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("model", model);
-        payload.put("messages", messages);
-        payload.put("temperature", 0.7);
-        payload.put("max_tokens", 2000);
+        Map<String, Object> payload = buildAnthropicPayload(model, messages, 0.7, 2000);
 
         String jsonPayload = objectMapper.writeValueAsString(payload);
         
@@ -235,12 +431,12 @@ public class CloudModelService {
         }
 
         int responseCode = conn.getResponseCode();
-        if (responseCode != 200) {
+            if (responseCode != 200) {
             try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "UTF-8"))) {
                 StringBuilder sb = new StringBuilder();
                 String line;
                 while ((line = br.readLine()) != null) sb.append(line);
-                System.err.println("[CloudModelService] ❌ Anthropic error " + responseCode + ": " + sb);
+                logger.error("Anthropic error {}: {}", responseCode, sb.toString());
             }
             throw new RuntimeException("Anthropic API error: " + responseCode);
         }
@@ -279,11 +475,24 @@ public class CloudModelService {
             
             // Estimate usage
             Map<String, Object> usage = new LinkedHashMap<>();
-            usage.put("prompt_tokens", ((Number) response.get("usage.input_tokens")).intValue());
-            usage.put("completion_tokens", ((Number) response.get("usage.output_tokens")).intValue());
+            Map<String, Object> usageResponse = null;
+            Object usageObj = response.get("usage");
+            if (usageObj instanceof Map<?, ?>) {
+                usageResponse = (Map<String, Object>) usageObj;
+            }
+
+            if (usageResponse != null) {
+                Object inputTokens = usageResponse.get("input_tokens");
+                Object outputTokens = usageResponse.get("output_tokens");
+                usage.put("prompt_tokens", inputTokens instanceof Number ? ((Number) inputTokens).intValue() : 0);
+                usage.put("completion_tokens", outputTokens instanceof Number ? ((Number) outputTokens).intValue() : 0);
+            } else {
+                usage.put("prompt_tokens", 0);
+                usage.put("completion_tokens", 0);
+            }
             result.put("usage", usage);
             
-            System.out.println("[CloudModelService] ✅ Anthropic response: " + content.length() + " chars");
+            logger.info("Anthropic response length: {} chars", content.length());
             return result;
         }
     }
@@ -292,7 +501,7 @@ public class CloudModelService {
      * Call Google Gemini API
      */
     private Map<String, Object> callGoogle(String model, String apiKey, List<Map<String, String>> messages) throws Exception {
-        System.out.println("[CloudModelService] 🔗 Calling Google Gemini: " + model);
+        logger.info("Calling Google Gemini: {}", model);
         
         // Google API expects the full model name (e.g., gemini-2.5-pro)
         // Do NOT strip the gemini- prefix
@@ -333,12 +542,12 @@ public class CloudModelService {
         }
 
         int responseCode = conn.getResponseCode();
-        if (responseCode != 200) {
+            if (responseCode != 200) {
             try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "UTF-8"))) {
                 StringBuilder sb = new StringBuilder();
                 String line;
                 while ((line = br.readLine()) != null) sb.append(line);
-                System.err.println("[CloudModelService] ❌ Google error " + responseCode + ": " + sb);
+                logger.error("Google Gemini error {}: {}", responseCode, sb.toString());
             }
             throw new RuntimeException("Google Gemini API error: " + responseCode);
         }
@@ -397,7 +606,7 @@ public class CloudModelService {
             }
             result.put("usage", usage);
             
-            System.out.println("[CloudModelService] ✅ Google Gemini response: " + content.length() + " chars");
+            logger.info("Google Gemini response length: {} chars", content.length());
             return result;
         }
     }
@@ -436,7 +645,7 @@ public class CloudModelService {
                         throw new RuntimeException("Unsupported provider: " + provider);
                 }
             } catch (Exception e) {
-                System.err.println("[CloudModelService] ❌ Error calling " + provider + ": " + e.getMessage());
+                logger.error("Error calling provider {}", provider, e);
                 throw new RuntimeException("Cloud API error: " + e.getMessage(), e);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -446,9 +655,9 @@ public class CloudModelService {
      * Call OpenRouter API (OpenAI-compatible)
      */
     private Map<String, Object> callOpenRouter(String model, String apiKey, List<Map<String, String>> messages) throws Exception {
-        System.out.println("[CloudModelService] 🔗 Calling OpenRouter: " + model);
+        logger.info("Calling OpenRouter: {}", model);
         if (apiKey != null && apiKey.length() > 5) {
-            System.out.println("[CloudModelService] 🔑 OpenRouter key prefix: " + apiKey.substring(0, Math.min(10, apiKey.length())) + "...");
+            logger.debug("OpenRouter key prefix: {}...", apiKey.substring(0, Math.min(10, apiKey.length())));
         }
         
         java.net.URL url = new java.net.URL("https://openrouter.ai/api/v1/chat/completions");
@@ -483,13 +692,9 @@ public class CloudModelService {
                 String line;
                 while ((line = br.readLine()) != null) errorDetails.append(line);
             }
-            System.err.println("[CloudModelService] ❌ OpenRouter error " + responseCode + ": " + errorDetails);
+            logger.error("OpenRouter error {}: {}", responseCode, errorDetails.toString());
             if (responseCode == 401) {
-                System.err.println("[CloudModelService] ⚠️  401 Unauthorized - Check your OpenRouter API key:");
-                System.err.println("[CloudModelService] ⚠️  1. Visit https://openrouter.ai/keys");
-                System.err.println("[CloudModelService] ⚠️  2. Create or copy your API key");
-                System.err.println("[CloudModelService] ⚠️  3. Key should start with 'sk-or-'");
-                System.err.println("[CloudModelService] ⚠️  4. Save it in Settings > API Keys > OpenRouter");
+                logger.warn("401 Unauthorized - Check your OpenRouter API key. Visit https://openrouter.ai/keys and ensure key starts with 'sk-or-'");
             }
             throw new RuntimeException("OpenRouter API error: " + responseCode + " - " + errorDetails);
         }
@@ -530,7 +735,7 @@ public class CloudModelService {
             result.put("choices", List.of(choiceResult));
             result.put("usage", response.get("usage"));
             
-            System.out.println("[CloudModelService] ✅ OpenRouter response: " + content.length() + " chars");
+            logger.info("OpenRouter response length: {} chars", content.length());
             return result;
         }
     }

@@ -27,10 +27,10 @@ public class TraceService {
         try {
             TraceLog trace = new TraceLog(agent, input, output, durationMs);
             TraceLog saved = traceLogRepo.save(trace);
-            System.out.println("[TraceService] ✅ Trace logged for " + agent + " (ID: " + saved.getId() + ", " + durationMs + "ms)");
+            org.slf4j.LoggerFactory.getLogger(TraceService.class).info("Trace logged for {} (ID: {}, {}ms)", agent, saved.getId(), durationMs);
             return saved;
         } catch (Exception e) {
-            System.err.println("[TraceService] ❌ Error logging trace: " + e.getMessage());
+            org.slf4j.LoggerFactory.getLogger(TraceService.class).error("Error logging trace", e);
             throw new RuntimeException("Failed to log trace", e);
         }
     }

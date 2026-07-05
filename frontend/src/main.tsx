@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router';
+import { BrowserRouter } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import App from './App';
 import { initApiBase } from './lib/api';
@@ -9,7 +9,7 @@ import './index.css';
 
 function applyTheme() {
   try {
-    const raw = localStorage.getItem('opentron-settings');
+    const raw = localStorage.getItem('OpenTron-settings');
     const settings = raw ? JSON.parse(raw) : {};
     const theme = settings.theme || 'system';
     if (theme === 'dark') {

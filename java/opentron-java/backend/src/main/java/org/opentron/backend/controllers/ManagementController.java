@@ -1,8 +1,12 @@
 package org.opentron.backend.controllers;
 
 import org.springframework.http.MediaType;
+import org.opentron.backend.dto.ToolCredentialsRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
@@ -64,6 +68,24 @@ public class ManagementController {
                 "version", "0.1.0",
                 "service", "opentron-java-backend",
                 "status", "ok"
+        )));
+    }
+
+    @GetMapping(path = "/analytics/identity", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<Map<String, Object>>> analyticsIdentity() {
+        return Mono.just(ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Map.of(
+                "enabled", true,
+                "anon_id", "opentron-anon-" + System.getenv().getOrDefault("HOSTNAME", "local"),
+                "host", "https://analytics.example.com",
+                "key", "ph_public_XXXXXXXXXXXXXX"
+        )));
+    }
+
+    @PostMapping(path = "/tools/{toolName}/credentials", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<Map<String, Object>>> saveToolCredentials(@PathVariable String toolName, @RequestBody ToolCredentialsRequest payload) {
+        return Mono.just(ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(Map.of(
+                "status", "success",
+                "tool", toolName
         )));
     }
 }

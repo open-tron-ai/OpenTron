@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -17,6 +19,8 @@ import java.util.List;
 
 @Service
 public class DeepSeekSpeechService {
+
+    private static final Logger logger = LoggerFactory.getLogger(DeepSeekSpeechService.class);
 
     @Value("${deepseek.api-key:}")
     private String deepseekApiKey;
@@ -80,7 +84,7 @@ public class DeepSeekSpeechService {
         result.put("confidence", 0.95);
         result.put("duration_seconds", audioFile.getSize() / 16000.0); // Rough estimate
         
-        System.out.println("[DeepSeekSpeechService] Transcription (mock): Hello world");
+        logger.info("Transcription (mock): Hello world");
         return result;
     }
 
@@ -103,7 +107,7 @@ public class DeepSeekSpeechService {
         result.put("voice", voice != null ? voice : "default");
         result.put("text_length", text.length());
         
-        System.out.println("[DeepSeekSpeechService] TTS request: " + text.length() + " chars");
+        logger.info("TTS request: {} chars", text.length());
         return result;
     }
 

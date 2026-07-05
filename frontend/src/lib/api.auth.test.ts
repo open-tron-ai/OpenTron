@@ -1,4 +1,4 @@
-﻿import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Regression for #266: the frontend must send the local API key as a Bearer
 // token on /v1 + /api requests, or `Tron serve` with a key configured 401s
@@ -33,6 +33,7 @@ beforeEach(() => {
 afterEach(() => {
   (globalThis as unknown as { localStorage?: MemoryStorage }).localStorage =
     undefined;
+  vi.unstubAllGlobals();
 });
 
 async function freshApi() {
@@ -81,6 +82,31 @@ describe('authHeaders', () => {
       'Content-Type': 'application/json',
       Authorization: 'Bearer sk-local-123',
     });
+  });
+});
+
+describe('apiFetch', () => {
+  it('forwards cloud API keys on coordinator requests', async () => {
+    localStorage.setItem('OpenTron-anthropic-key', 'sk-ant-test');
+    localStorage.setItem('OpenTron-openai-key', 'sk-openai-test');
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { apiFetch } = await freshApi();
+    await apiFetch('/v1/agents/coordinate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.headers).toBeDefined();
+    const headers = new Headers(init.headers);
+    expect(headers.get('X-API-Keys')).toContain('sk-ant-test');
+    expect(headers.get('X-API-Keys')).toContain('sk-openai-test');
   });
 });
 

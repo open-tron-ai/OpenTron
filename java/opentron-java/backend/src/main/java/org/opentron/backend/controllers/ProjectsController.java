@@ -8,6 +8,8 @@ import org.opentron.backend.storage.repositories.GeneratedProjectRepository;
 import org.opentron.backend.storage.entities.GeneratedProject;
 import org.opentron.backend.storage.service.StorageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Projects API
@@ -16,6 +18,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @RestController
 @RequestMapping("/v1/projects")
 public class ProjectsController {
+
+    private static final Logger logger = LoggerFactory.getLogger(ProjectsController.class);
 
     @Autowired
     private GeneratedProjectRepository projectRepository;
@@ -30,17 +34,17 @@ public class ProjectsController {
      * Create and save a new project with trace logging
      */
     @PostMapping("/create")
-    public ResponseEntity<Map<String, Object>> createProject(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Map<String, Object>> createProject(@RequestBody org.opentron.backend.dto.CreateProjectRequest request) {
         long startTime = System.currentTimeMillis();
         try {
-            String projectName = (String) request.getOrDefault("name", "Untitled");
-            String projectType = (String) request.getOrDefault("type", "React");
-            String description = (String) request.getOrDefault("description", "");
+            String projectName = request.getName() == null ? "Untitled" : request.getName();
+            String projectType = request.getType() == null ? "React" : request.getType();
+            String description = request.getDescription() == null ? "" : request.getDescription();
             
             // Generate unique project ID
             String projectId = "proj_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
             
-            System.out.println("[ProjectsController] 📦 Creating project: " + projectName + " (ID: " + projectId + ")");
+            logger.info("Creating project: {} (ID: {})", projectName, projectId);
             
             // Generate sample files based on type
             Map<String, String> files = generateSampleFiles(projectType);
@@ -59,16 +63,16 @@ public class ProjectsController {
             // Save to database
             GeneratedProject saved = projectRepository.save(project);
             
-            System.out.println("[ProjectsController] ✅ Project saved with ID: " + saved.getProjectId());
+            logger.info("Project saved with ID: {}", saved.getProjectId());
             
             // Log trace
             long duration = System.currentTimeMillis() - startTime;
             try {
                 String traceOutput = "Project created: " + projectName + " (" + files.size() + " files, " + totalSize + " bytes)";
                 storageService.saveTrace("project-generator", "Create project: " + projectName, traceOutput, (int)duration);
-                System.out.println("[ProjectsController] 📝 Trace logged for project creation");
+                logger.debug("Trace logged for project creation");
             } catch (Exception e) {
-                System.err.println("[ProjectsController] ⚠️ Failed to log trace: " + e.getMessage());
+                logger.warn("Failed to log trace", e);
             }
             
             // Return response with files
@@ -89,13 +93,13 @@ public class ProjectsController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
-            System.err.println("[ProjectsController] ❌ Error: " + e.getMessage());
+            logger.error("Error creating project", e);
             
             // Log error trace
             try {
                 storageService.saveTrace("project-generator", "Create project failed", "Error: " + e.getMessage(), (int)duration);
             } catch (Exception logErr) {
-                System.err.println("[ProjectsController] ⚠️ Failed to log error trace: " + logErr.getMessage());
+                logger.warn("Failed to log error trace", logErr);
             }
             
             Map<String, Object> error = new LinkedHashMap<>();
@@ -140,7 +144,7 @@ public class ProjectsController {
             try {
                 storageService.saveTrace("project-generator", "List projects (limit=" + limit + ")", "Listed " + projectsList.size() + " projects", (int)duration);
             } catch (Exception e) {
-                System.err.println("[ProjectsController] ⚠️ Failed to log trace: " + e.getMessage());
+                logger.warn("Failed to log trace", e);
             }
             
             Map<String, Object> response = new LinkedHashMap<>();
@@ -150,16 +154,16 @@ public class ProjectsController {
             response.put("total_count", projectRepository.count());
             response.put("duration_ms", duration);
             
-            System.out.println("[ProjectsController] 📋 Listed " + projectsList.size() + " projects");
+            logger.info("Listed {} projects", projectsList.size());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
-            System.err.println("[ProjectsController] ❌ Error listing projects: " + e.getMessage());
+            logger.error("Error listing projects", e);
             
             try {
                 storageService.saveTrace("project-generator", "List projects failed", "Error: " + e.getMessage(), (int)duration);
             } catch (Exception logErr) {
-                System.err.println("[ProjectsController] ⚠️ Failed to log error trace: " + logErr.getMessage());
+                logger.warn("Failed to log error trace", logErr);
             }
             
             Map<String, Object> error = new LinkedHashMap<>();
@@ -188,7 +192,7 @@ public class ProjectsController {
                 try {
                     storageService.saveTrace("project-generator", "Get project: " + projectId, "Project not found", (int)duration);
                 } catch (Exception e) {
-                    System.err.println("[ProjectsController] ⚠️ Failed to log trace: " + e.getMessage());
+                        logger.warn("Failed to log trace", e);
                 }
                 
                 return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
@@ -203,7 +207,7 @@ public class ProjectsController {
             try {
                 storageService.saveTrace("project-generator", "Get project: " + projectId, "Retrieved " + p.getFileCount() + " files", (int)duration);
             } catch (Exception e) {
-                System.err.println("[ProjectsController] ⚠️ Failed to log trace: " + e.getMessage());
+                logger.warn("Failed to log trace", e);
             }
             
             Map<String, Object> response = new LinkedHashMap<>();
@@ -221,17 +225,17 @@ public class ProjectsController {
             response.put("duration_ms", duration);
             response.put("files", files);
             
-            System.out.println("[ProjectsController] 📂 Retrieved project: " + projectId);
+            logger.info("Retrieved project: {}", projectId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
-            System.err.println("[ProjectsController] ❌ Error: " + e.getMessage());
+            logger.error("Error getting project {}", projectId, e);
             
             // Log trace for error
             try {
                 storageService.saveTrace("project-generator", "Get project: " + projectId, "Error: " + e.getMessage(), (int)duration);
             } catch (Exception logErr) {
-                System.err.println("[ProjectsController] ⚠️ Failed to log error trace: " + logErr.getMessage());
+                logger.warn("Failed to log error trace", logErr);
             }
             
             Map<String, Object> error = new LinkedHashMap<>();

@@ -3,10 +3,13 @@ package org.opentron.backend.controllers;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.opentron.backend.agents.MultiAgentCoordinator;
 import org.opentron.backend.storage.service.StorageService;
 import org.opentron.backend.storage.entities.TraceLog;
@@ -17,6 +20,7 @@ import reactor.util.retry.Retry;
 @RequestMapping("/v1/agents")
 public class AgentsController {
 
+    private static final Logger logger = LoggerFactory.getLogger(AgentsController.class);
     private final MultiAgentCoordinator coordinator;
     
     @Autowired
@@ -25,6 +29,7 @@ public class AgentsController {
     private final Map<String, Map<String, Object>> taskResults = new ConcurrentHashMap<>();
     private final Map<String, Long> taskTimestamps = new ConcurrentHashMap<>();
     private static final long TASK_TTL_MS = 5 * 60 * 1000; // 5 minutes
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     public AgentsController(MultiAgentCoordinator coordinator) {
         this.coordinator = coordinator;
@@ -42,10 +47,11 @@ public class AgentsController {
      */
     @PostMapping(value = "/coordinate", produces = "text/event-stream")
     public reactor.core.publisher.Flux<String> coordinateAgents(
-            @RequestBody Map<String, String> request) {
+            HttpServletRequest servletRequest,
+            @RequestBody org.opentron.backend.dto.AgentCoordinateRequest request) {
 
-        String userRequest = request.get("request");
-        String context = request.getOrDefault("context", "");
+        String userRequest = request.getRequest();
+        String context = request.getContext() == null ? "" : request.getContext();
 
         if (userRequest == null || userRequest.isBlank()) {
             return reactor.core.publisher.Flux.just("data: {\"type\":\"error\",\"message\":\"Missing request field\"}\n\n");
@@ -58,7 +64,7 @@ public class AgentsController {
             new Thread(() -> {
                 long start = System.currentTimeMillis();
                 try {
-                    System.out.println("[AgentsController] Streaming coordinate: " + req);
+                    logger.info("Streaming coordinator request");
 
                     // Emit routing event
                     sink.next(sseEvent("status", Map.of("message", "Tron is analyzing your request...", "phase", "routing")));
@@ -83,16 +89,21 @@ public class AgentsController {
                         public void onAgentError(String agent, String error) {
                             sink.next(sseEvent("agent_error", Map.of("agent", agent, "error", error)));
                         }
+                        @Override
+                        public void onStatus(String status) {
+                            sink.next(sseEvent("status", Map.of("message", status)));
+                        }
                     };
 
-                    Map<String, Object> result = coordinator.processRequest(req, ctx, callback);
+                    Map<String, String> apiKeys = extractApiKeysFromRequest(servletRequest);
+                    Map<String, Object> result = coordinator.processRequest(req, ctx, callback, apiKeys);
                     long totalTime = System.currentTimeMillis() - start;
 
                     // Save trace
                     try {
                         storageService.saveTrace("coordinator", req, result != null ? result.toString() : "", (int) totalTime);
                     } catch (Exception e) {
-                        System.err.println("[AgentsController] Trace save failed: " + e.getMessage());
+                        logger.warn("Trace save failed", e);
                     }
 
                     // Emit final done event with full result
@@ -104,12 +115,32 @@ public class AgentsController {
                     sink.complete();
 
                 } catch (Exception e) {
-                    System.err.println("[AgentsController] Stream error: " + e.getMessage());
+                    logger.error("Streaming coordinator error", e);
                     sink.next(sseEvent("error", Map.of("message", e.getMessage())));
                     sink.complete();
                 }
             }).start();
         });
+    }
+
+    private Map<String, String> extractApiKeysFromRequest(HttpServletRequest request) {
+        Map<String, String> apiKeys = new HashMap<>();
+        try {
+            String apiKeysHeader = request.getHeader("X-API-Keys");
+            if (apiKeysHeader != null && !apiKeysHeader.isBlank()) {
+                @SuppressWarnings("unchecked")
+                Map<String, String> parsed = objectMapper.readValue(apiKeysHeader, Map.class);
+                apiKeys.putAll(parsed);
+                try {
+                    logger.debug("Received API keys for: {}", parsed.keySet());
+                } catch (Exception e) {
+                    // Defensive: logging should never fail request processing
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Could not parse API keys header", e);
+        }
+        return apiKeys;
     }
 
     private String sseEvent(String type, Map<String, Object> data) {
@@ -128,16 +159,15 @@ public class AgentsController {
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getAgentStatuses() {
         try {
-            System.out.println("[AgentsController] 📊 Fetching agent statuses...");
+            logger.info("Fetching agent statuses");
             Map<String, Object> statuses = coordinator.getAgentStatuses();
             Map<String, Object> response = new java.util.HashMap<>();
             response.put("agents", statuses);
             response.put("timestamp", System.currentTimeMillis());
-            System.out.println("[AgentsController] ✅ Returned status for " + (statuses != null ? statuses.size() : 0) + " agents");
+            logger.info("Returned status for {} agents", statuses != null ? statuses.size() : 0);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.err.println("[AgentsController] ❌ Error getting statuses: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error getting agent statuses", e);
             Map<String, Object> errorMap = new java.util.HashMap<>();
             errorMap.put("error", e.getMessage());
             return new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -148,13 +178,13 @@ public class AgentsController {
      * Send a task to a specific agent (async)
      * Returns a taskId for polling results
      */
-    @PostMapping("/task")
-    public Mono<ResponseEntity<Map<String, Object>>> sendAgentTask(
-            @RequestBody Map<String, String> request) {
+        @PostMapping("/task")
+        public Mono<ResponseEntity<Map<String, Object>>> sendAgentTask(
+            @RequestBody org.opentron.backend.dto.AgentTaskRequest request) {
         
         return Mono.fromCallable(() -> {
-            String agent = request.get("agent");
-            String task = request.get("task");
+            String agent = request.getAgent();
+            String task = request.getTask();
             
             if (agent == null || agent.isBlank() || task == null || task.isBlank()) {
                 Map<String, Object> errorMap = new java.util.HashMap<>();
@@ -165,7 +195,7 @@ public class AgentsController {
             // Generate unique task ID
             String taskId = "task-" + System.currentTimeMillis() + "-" + agent;
             
-            System.out.println("[AgentsController] 📤 Sending task " + taskId + " to " + agent);
+            logger.info("Sending task {} to agent {}", taskId, agent);
 
             // Store pending status
             Map<String, Object> taskData = new java.util.HashMap<>();
@@ -202,10 +232,10 @@ public class AgentsController {
                     try {
                         storageService.saveTrace(agent, task, "Task completed", 0);
                     } catch (Exception e) {
-                        System.err.println("[AgentsController] ⚠️ Failed to save task trace: " + e.getMessage());
+                        logger.warn("Failed to save task trace", e);
                     }
                 } catch (Exception e) {
-                    System.err.println("[AgentsController] Task error: " + e.getMessage());
+                    logger.error("Task execution error", e);
                     Map<String, Object> errorResult = new java.util.HashMap<>();
                     errorResult.put("status", "error");
                     errorResult.put("error", e.getMessage());
@@ -263,7 +293,7 @@ public class AgentsController {
                 return ResponseEntity.ok(result);
             }
         } catch (Exception e) {
-            System.err.println("[AgentsController] Error polling task: " + e.getMessage());
+            logger.error("Error polling task result", e);
             Map<String, Object> errorMap = new java.util.HashMap<>();
             errorMap.put("error", e.getMessage());
             return new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -284,8 +314,7 @@ public class AgentsController {
                         now - entry.getValue() > TASK_TTL_MS
                     );
                     
-                    System.out.println("[AgentsController] 🧹 Cleaned up old tasks. Remaining: " + 
-                        taskResults.size());
+                    logger.debug("Cleaned up old tasks. Remaining: {}", taskResults.size());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -376,14 +405,14 @@ public class AgentsController {
     public ResponseEntity<Map<String, Object>> bindAgentChannel(
         @PathVariable String agentId,
         @RequestParam String type,
-        @RequestBody Map<String, Object> config
+        @RequestBody org.opentron.backend.dto.ChannelBindRequest config
     ) {
         Map<String, Object> binding = new HashMap<>();
         binding.put("id", "binding-" + UUID.randomUUID().toString().substring(0, 8));
         binding.put("agent_id", agentId);
         binding.put("channel_type", type);
-        binding.put("config", config);
-        binding.put("routing_mode", "default");
+        binding.put("config", config.getConfig() == null ? new HashMap<>() : config.getConfig());
+        binding.put("routing_mode", config.getRouting_mode() == null ? "default" : config.getRouting_mode());
         return ResponseEntity.ok(binding);
     }
 
@@ -485,7 +514,7 @@ public class AgentsController {
     @PostMapping("/tools/{toolName}/credentials")
     public ResponseEntity<Void> saveToolCredentials(
         @PathVariable String toolName,
-        @RequestBody Map<String, Object> credentials
+        @RequestBody org.opentron.backend.dto.ToolCredentialsRequest credentials
     ) {
         return ResponseEntity.ok().build();
     }
@@ -506,10 +535,10 @@ public class AgentsController {
             response.put("total_traces", stats.totalTraceEntries);
             response.put("backend", "postgresql");
             response.put("timestamp", System.currentTimeMillis());
-            System.out.println("[AgentsController] 📊 Storage stats: " + stats.toString());
+            logger.info("Storage stats: {}", stats.toString());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.err.println("[AgentsController] ❌ Error getting storage stats: " + e.getMessage());
+            logger.error("Error getting storage stats", e);
             Map<String, Object> errorMap = new java.util.HashMap<>();
             errorMap.put("error", e.getMessage());
             return new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -543,13 +572,27 @@ public class AgentsController {
             response.put("count", traceList.size());
             response.put("timestamp", System.currentTimeMillis());
             
-            System.out.println("[AgentsController] 📋 Loaded " + traceList.size() + " traces for agent " + agentId);
+            logger.info("Loaded {} traces for agent {}", traceList.size(), agentId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.err.println("[AgentsController] ❌ Error loading traces: " + e.getMessage());
+            logger.error("Error loading traces for agent {}", agentId, e);
             Map<String, Object> errorMap = new java.util.HashMap<>();
             errorMap.put("error", e.getMessage());
             return new ResponseEntity<>(errorMap, HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Agent events endpoint (deprecated SSE stub).
+     * Clients should use the WebSocket endpoint at `/v1/agents/events`.
+     */
+    @GetMapping(value = "/events", produces = "application/json")
+    public ResponseEntity<Map<String, Object>> getAgentEvents() {
+        logger.info("Agent events SSE endpoint requested - advising websocket usage");
+        Map<String, Object> resp = new java.util.HashMap<>();
+        resp.put("error", "use_websocket");
+        resp.put("message", "Please connect via WebSocket to receive agent events");
+        resp.put("ws_url", "/v1/agents/events?agent_id={agentId}");
+        return ResponseEntity.status(426).body(resp);
     }
 }

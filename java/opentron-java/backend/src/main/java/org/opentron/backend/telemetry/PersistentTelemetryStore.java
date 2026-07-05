@@ -1,6 +1,8 @@
 package org.opentron.backend.telemetry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -16,6 +18,8 @@ import java.util.Map;
  */
 @Component
 public class PersistentTelemetryStore {
+
+    private static final Logger logger = LoggerFactory.getLogger(PersistentTelemetryStore.class);
 
     private static final String DATA_DIR = System.getProperty("user.home") + "/.opentron";
     private static final String TELEMETRY_FILE = DATA_DIR + "/telemetry.json";
@@ -37,7 +41,7 @@ public class PersistentTelemetryStore {
                 return loaded;
             }
         } catch (IOException e) {
-            System.err.println("[Telemetry] Error loading telemetry: " + e.getMessage());
+            logger.warn("Error loading telemetry", e);
         }
 
         return new HashMap<>(Map.of(
@@ -53,7 +57,7 @@ public class PersistentTelemetryStore {
             String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(data);
             Files.write(Paths.get(TELEMETRY_FILE), json.getBytes());
         } catch (IOException e) {
-            System.err.println("[Telemetry] Error saving telemetry: " + e.getMessage());
+            logger.warn("Error saving telemetry", e);
         }
     }
 
@@ -105,7 +109,7 @@ public class PersistentTelemetryStore {
             if (val instanceof Number) return ((Number) val).longValue();
             return 0L;
         } catch (Exception e) {
-            System.err.println("[Telemetry] Error getting total tokens: " + e.getMessage());
+            logger.warn("Error getting total tokens", e);
             return 0L;
         }
     }
@@ -122,7 +126,7 @@ public class PersistentTelemetryStore {
             if (val instanceof Number) return ((Number) val).longValue();
             return 0L;
         } catch (Exception e) {
-            System.err.println("[Telemetry] Error getting total requests: " + e.getMessage());
+            logger.warn("Error getting total requests", e);
             return 0L;
         }
     }
@@ -139,7 +143,7 @@ public class PersistentTelemetryStore {
             if (val instanceof Number) return ((Number) val).longValue();
             return 0L;
         } catch (Exception e) {
-            System.err.println("[Telemetry] Error getting total energy: " + e.getMessage());
+            logger.warn("Error getting total energy", e);
             return 0L;
         }
     }

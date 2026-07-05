@@ -244,6 +244,86 @@
   }
 }
 
+
+/* Lightning container */
+.orb-lightning {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 210%;
+  height: 210%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+/* Each bolt is an SVG absolutely positioned around the orb */
+.orb-lightning .bolt {
+  position: absolute;
+  width: 22px;
+  height: 75px;
+  opacity: 0;
+  filter: drop-shadow(0 0 6px #0af) drop-shadow(0 0 16px #0af) drop-shadow(0 0 28px #0af);
+}
+
+/* Flash animation - sharp on/off like real lightning */
+@keyframes bolt-flash {
+  0%   { opacity: 0;   }
+  8%   { opacity: 1;   }
+  18%  { opacity: 0.1; }
+  26%  { opacity: 0.9; }
+  42%  { opacity: 0;   }
+  100% { opacity: 0;   }
+}
+
+.orb-lightning.active .bolt {
+  animation: bolt-flash 1.3s ease-in-out infinite;
+}
+
+/* Top center */
+.bolt-1 {
+  top: 1%;
+  left: calc(50% - 11px);
+  transform-origin: top center;
+  animation-delay: 0s !important;
+}
+
+/* Left upper */
+.bolt-2 {
+  top: 8%;
+  left: 3%;
+  transform: rotate(-30deg);
+  transform-origin: top center;
+  animation-delay: 0.22s !important;
+}
+
+/* Right upper */
+.bolt-3 {
+  top: 8%;
+  right: 3%;
+  transform: rotate(30deg);
+  transform-origin: top center;
+  animation-delay: 0.44s !important;
+}
+
+/* Bottom left */
+.bolt-4 {
+  bottom: 1%;
+  left: 25%;
+  transform: rotate(170deg);
+  transform-origin: top center;
+  animation-delay: 0.60s !important;
+}
+
+/* Bottom right */
+.bolt-5 {
+  bottom: 1%;
+  right: 25%;
+  transform: rotate(190deg);
+  transform-origin: top center;
+  animation-delay: 0.11s !important;
+}
+
 /* State-specific enhancements */
 .avatar-idle .orb-inner {
   animation: pulse-strong 3s ease-in-out infinite;

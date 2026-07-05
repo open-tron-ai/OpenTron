@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import { MessageBubble } from './MessageBubble';
 import { InputArea } from './InputArea';
 import { StreamingDots } from './StreamingDots';

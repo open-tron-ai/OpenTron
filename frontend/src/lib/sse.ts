@@ -43,15 +43,11 @@ export async function chatCompletionSimple(
   signal?: AbortSignal,
 ): Promise<any> {
   const base = getBase();
-  console.log('[chatCompletionSimple] Sending request to:', `${base}/v1/chat/completions`);
-  console.log('[chatCompletionSimple] Request:', request);
-
   const apiKeys = getCloudApiKeys();
   const headers = authHeaders({ 'Content-Type': 'application/json' });
   
   if (Object.keys(apiKeys).length > 0) {
-    headers['X-API-Keys'] = JSON.stringify(apiKeys);
-    console.log('[chatCompletionSimple] Sending API keys for:', Object.keys(apiKeys).join(', '));
+    headers.set('X-API-Keys', JSON.stringify(apiKeys));
   }
 
   const response = await fetch(`${base}/v1/chat/completions`, {
@@ -61,17 +57,12 @@ export async function chatCompletionSimple(
     signal,
   });
 
-  console.log('[chatCompletionSimple] Response status:', response.status);
-
   if (!response.ok) {
     const errText = await response.text();
-    console.error('[chatCompletionSimple] Error response:', errText);
     throw new Error(`Chat request failed: ${response.status} - ${errText}`);
   }
 
-  const data = await response.json();
-  console.log('[chatCompletionSimple] Got response:', data);
-  return data;
+  return response.json();
 }
 
 export async function* streamChat(
@@ -79,15 +70,11 @@ export async function* streamChat(
   signal?: AbortSignal,
 ): AsyncGenerator<SSEEvent> {
   const base = getBase();
-  console.log('[streamChat] Connecting to:', `${base}/v1/chat/completions`);
-  console.log('[streamChat] Request:', request);
-  
   const apiKeys = getCloudApiKeys();
   const headers = authHeaders({ 'Content-Type': 'application/json' });
   
   if (Object.keys(apiKeys).length > 0) {
-    headers['X-API-Keys'] = JSON.stringify(apiKeys);
-    console.log('[streamChat] Sending API keys for:', Object.keys(apiKeys).join(', '));
+    headers.set('X-API-Keys', JSON.stringify(apiKeys));
   }
   
   const response = await fetch(`${base}/v1/chat/completions`, {
@@ -97,12 +84,8 @@ export async function* streamChat(
     signal,
   });
 
-  console.log('[streamChat] Response status:', response.status);
-  console.log('[streamChat] Response content-type:', response.headers.get('content-type'));
-  
   if (!response.ok) {
     const errText = await response.text();
-    console.error('[streamChat] Error response:', errText);
     throw new Error(`Chat request failed: ${response.status} - ${errText}`);
   }
 
@@ -118,7 +101,6 @@ export async function* streamChat(
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
-        console.log('[streamChat] Stream ended');
         break;
       }
 
@@ -129,20 +111,13 @@ export async function* streamChat(
       let currentEvent: string | undefined;
 
       for (const line of lines) {
-        console.log('[streamChat] Line:', line.substring(0, 100));
-        
         if (line.startsWith('event: ')) {
           currentEvent = line.slice(7).trim();
-          console.log('[streamChat] Event:', currentEvent);
         } else if (line.startsWith('data: ')) {
           const data = line.slice(6);
-          console.log('[streamChat] Data:', data.substring(0, 100));
-          
           if (data === '[DONE]') {
-            console.log('[streamChat] Got [DONE]');
             return;
           }
-          
           yield { event: currentEvent, data };
           currentEvent = undefined;
         } else if (line.trim() === '') {
@@ -196,6 +171,51 @@ export async function* streamResearch(
           if (parsed.type === 'done') return;
         } catch {
           // skip malformed chunks
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+export async function* streamPullEvents(
+  jobId: string,
+  signal?: AbortSignal,
+): AsyncGenerator<{ data: string } | { error: string }> {
+  const base = getBase();
+  const response = await fetch(`${base}/v1/models/pull/${encodeURIComponent(jobId)}/events`, {
+    method: 'GET',
+    headers: authHeaders(),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Pull events request failed: ${response.status}`);
+  }
+
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') return;
+        try {
+          const parsed = JSON.parse(data);
+          yield { data: parsed } as any;
+        } catch {
+          yield { data } as any;
         }
       }
     }

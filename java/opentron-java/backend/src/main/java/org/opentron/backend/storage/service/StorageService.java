@@ -43,7 +43,7 @@ public class StorageService {
         // Check for duplicates
         Optional<AgentMemory> existing = agentMemoryRepo.findByTraceHash(traceHash);
         if (existing.isPresent()) {
-            System.out.println("[StorageService] Duplicate trace detected for " + agentName + ", skipping");
+            org.slf4j.LoggerFactory.getLogger(StorageService.class).info("Duplicate trace detected for {}, skipping", agentName);
             return existing.get();
         }
         
@@ -51,7 +51,7 @@ public class StorageService {
         memory.setTraceHash(traceHash);
         
         AgentMemory saved = agentMemoryRepo.save(memory);
-        System.out.println("[StorageService] Saved memory for " + agentName + " (ID: " + saved.getId() + ")");
+        org.slf4j.LoggerFactory.getLogger(StorageService.class).info("Saved memory for {} (ID: {})", agentName, saved.getId());
         return saved;
     }
     
@@ -95,7 +95,7 @@ public class StorageService {
         // The trace will be saved uncompressed for now
         
         TraceLog saved = traceLogRepo.save(trace);
-        System.out.println("[StorageService] Saved trace for agent '" + agent + "' (ID: " + saved.getId() + ", duration: " + durationMs + "ms)");
+        org.slf4j.LoggerFactory.getLogger(StorageService.class).info("Saved trace for agent '{}' (ID: {}, duration: {}ms)", agent, saved.getId(), durationMs);
         return saved;
     }
     
@@ -136,7 +136,7 @@ public class StorageService {
     public void archiveOldMemory(int daysOld) {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(daysOld);
         agentMemoryRepo.deleteOldMemory(cutoff);
-        System.out.println("[StorageService] Archived agent memory older than " + daysOld + " days (cutoff: " + cutoff + ")");
+        org.slf4j.LoggerFactory.getLogger(StorageService.class).info("Archived agent memory older than {} days (cutoff: {})", daysOld, cutoff);
     }
     
     /**
@@ -146,7 +146,7 @@ public class StorageService {
     public void archiveOldTraces(int daysOld) {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(daysOld);
         traceLogRepo.deleteOldTraces(cutoff);
-        System.out.println("[StorageService] Archived trace logs older than " + daysOld + " days (cutoff: " + cutoff + ")");
+        org.slf4j.LoggerFactory.getLogger(StorageService.class).info("Archived trace logs older than {} days (cutoff: {})", daysOld, cutoff);
     }
     
     // ============ Utility Methods ============

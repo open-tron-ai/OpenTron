@@ -31,18 +31,25 @@ public class AgentChannelsController {
     @PostMapping("/{agentId}/channels")
     public ResponseEntity<Map<String, Object>> bindChannel(
             @PathVariable String agentId,
-            @RequestBody Map<String, Object> payload) {
-        String channelType = (String) payload.get("channel_type");
+            @RequestBody org.opentron.backend.dto.ChannelBindRequest payload) {
+        String channelType = payload.getChannel_type();
         
         Map<String, Object> binding = new HashMap<>();
         binding.put("id", "ch-" + channelType + "-" + System.currentTimeMillis());
         binding.put("agent_id", agentId);
         binding.put("channel_type", channelType);
-        binding.put("config", payload.getOrDefault("config", new HashMap<>()));
+        binding.put("config", payload.getConfig() == null ? new HashMap<>() : payload.getConfig());
         binding.put("session_id", "session-" + UUID.randomUUID());
-        binding.put("routing_mode", payload.getOrDefault("routing_mode", "dedicated"));
+        binding.put("routing_mode", payload.getRouting_mode() == null ? "dedicated" : payload.getRouting_mode());
         
         return ResponseEntity.ok(binding);
+    }
+
+    @PostMapping("/{agentId}/channels/bind")
+    public ResponseEntity<Map<String, Object>> bindChannelAlias(
+            @PathVariable String agentId,
+            @RequestBody org.opentron.backend.dto.ChannelBindRequest payload) {
+        return bindChannel(agentId, payload);
     }
 
     @DeleteMapping("/{agentId}/channels/{bindingId}")

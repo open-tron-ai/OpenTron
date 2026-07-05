@@ -1,6 +1,8 @@
 package org.opentron.backend.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -17,6 +19,7 @@ import java.util.*;
 public class HuggingFaceService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Logger logger = LoggerFactory.getLogger(HuggingFaceService.class);
     
     // Configuration - use environment variables or fallback to defaults
     private static final String HF_API_TOKEN = System.getenv("HF_API_TOKEN") != null 
@@ -44,7 +47,7 @@ public class HuggingFaceService {
      */
     public Mono<Map<String, Object>> chatCompletion(String model, List<Map<String, String>> messages) {
         return Mono.fromCallable(() -> {
-            System.out.println("[HuggingFaceService] Chat completion: mode=" + HF_MODE + " model=" + model);
+            logger.info("HuggingFace chat completion: mode={} model={}", HF_MODE, model);
             
             if ("api".equalsIgnoreCase(HF_MODE)) {
                 return chatCompletionViaApi(model, messages);
@@ -63,7 +66,7 @@ public class HuggingFaceService {
         }
 
         String actualModel = model != null && !model.isEmpty() ? model : DEFAULT_CLOUD_MODEL;
-        System.out.println("[HuggingFaceService] Using HF API with model: " + actualModel);
+        logger.info("Using HF API with model: {}", actualModel);
 
         // Build request
         Map<String, Object> requestPayload = new LinkedHashMap<>();
@@ -93,7 +96,7 @@ public class HuggingFaceService {
         String responseText = readResponse(conn, responseCode);
         
         if (responseCode != 200) {
-            System.err.println("[HuggingFaceService] API error " + responseCode + ": " + responseText);
+            logger.error("HF API error {}: {}", responseCode, responseText);
             throw new RuntimeException("HF API error " + responseCode + ": " + responseText);
         }
 
@@ -105,7 +108,7 @@ public class HuggingFaceService {
      */
     private Map<String, Object> chatCompletionLocal(String model, List<Map<String, String>> messages) throws Exception {
         String actualModel = model != null && !model.isEmpty() ? model : DEFAULT_LOCAL_MODEL;
-        System.out.println("[HuggingFaceService] Using local HF with model: " + actualModel);
+        logger.info("Using local HF with model: {}", actualModel);
 
         // Build request for local FastAPI server
         Map<String, Object> requestPayload = new LinkedHashMap<>();
@@ -132,7 +135,7 @@ public class HuggingFaceService {
         String responseText = readResponse(conn, responseCode);
 
         if (responseCode != 200) {
-            System.err.println("[HuggingFaceService] Local error " + responseCode + ": " + responseText);
+            logger.error("Local HF error {}: {}", responseCode, responseText);
             throw new RuntimeException("Local HF error " + responseCode + ": " + responseText);
         }
 
@@ -255,7 +258,7 @@ public class HuggingFaceService {
     @SuppressWarnings("unchecked")
     public Mono<List<String>> listModels() {
         return Mono.fromCallable(() -> {
-            System.out.println("[HuggingFaceService] Listing available models (mode: " + HF_MODE + ")");
+            logger.info("Listing available models (mode: {})", HF_MODE);
             
             List<String> models = new ArrayList<>();
             
@@ -291,7 +294,7 @@ public class HuggingFaceService {
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("[HuggingFaceService] Could not fetch local models: " + e.getMessage());
+                    logger.warn("Could not fetch local models", e);
                 }
                 
                 // Add defaults if list is empty

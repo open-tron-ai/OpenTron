@@ -1,7 +1,10 @@
 package org.opentron.backend.agents;
 
+import org.opentron.backend.util.CloudModelService;
 import org.opentron.backend.util.OllamaCliService;
 import org.opentron.backend.util.HuggingFaceService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -13,16 +16,26 @@ public class AgentLLMBridge {
 
     private final OllamaCliService ollamaService;
     private final HuggingFaceService huggingFaceService;
+    private final CloudModelService cloudModelService;
     private final String model;
     private final boolean useHF;
+    private final Map<String, String> apiKeyOverrides;
+    private static final Logger logger = LoggerFactory.getLogger(AgentLLMBridge.class);
 
     public AgentLLMBridge(OllamaCliService ollamaService, HuggingFaceService huggingFaceService, String model) {
+        this(ollamaService, huggingFaceService, null, model, null);
+    }
+
+    public AgentLLMBridge(OllamaCliService ollamaService, HuggingFaceService huggingFaceService, CloudModelService cloudModelService,
+                          String model, Map<String, String> apiKeyOverrides) {
         this.ollamaService = ollamaService;
         this.huggingFaceService = huggingFaceService;
+        this.cloudModelService = cloudModelService;
         this.model = model != null ? model : "mistral";
         this.useHF = System.getenv("HF_MODE") != null &&
                     ("local".equalsIgnoreCase(System.getenv("HF_MODE")) ||
                      "api".equalsIgnoreCase(System.getenv("HF_MODE")));
+        this.apiKeyOverrides = apiKeyOverrides == null ? Collections.emptyMap() : apiKeyOverrides;
     }
 
     /**
@@ -31,19 +44,16 @@ public class AgentLLMBridge {
      */
     public Map<String, Object> queryLLM(String systemPrompt, String userQuestion, int maxTokens) {
         try {
-            System.out.println("[AgentLLMBridge] Querying " + model + "...");
+            logger.info("Querying {}...", model);
 
             List<Map<String, String>> messages = new ArrayList<>();
             messages.add(Map.of("role", "system", "content", systemPrompt));
             messages.add(Map.of("role", "user", "content", userQuestion));
 
-            // Block without timeout — virtual thread parks until Ollama responds
-            Map<String, Object> response = useHF
-                ? huggingFaceService.chatCompletion(model, messages).block()
-                : ollamaService.chatCompletion(model, messages).block();
+            Map<String, Object> response = invokeModel(messages);
 
             if (response == null) {
-                return errorResponse("Ollama returned null response");
+                return errorResponse("LLM returned null response");
             }
 
             @SuppressWarnings("unchecked")
@@ -59,16 +69,41 @@ public class AgentLLMBridge {
             String content = message != null ? (String) message.get("content") : "";
 
             if (content == null || content.isBlank()) {
-                return errorResponse("Empty content from Ollama");
+                return errorResponse("Empty content from LLM");
             }
 
-            System.out.println("[AgentLLMBridge] " + model + " responded: " + content.length() + " chars");
+            logger.info("{} responded: {} chars", model, content.length());
             return parseRecommendations(content, response);
 
         } catch (Exception e) {
-            System.err.println("[AgentLLMBridge] Error: " + e.getMessage());
-            return errorResponse("Ollama unavailable: " + e.getMessage());
+            logger.error("Error querying LLM", e);
+            return errorResponse("LLM unavailable: " + e.getMessage());
         }
+    }
+
+    private boolean isCloudModel(String modelName) {
+        if (modelName == null || modelName.isBlank()) return false;
+        String lower = modelName.toLowerCase();
+        return lower.startsWith("gpt-") || lower.startsWith("gpt4") || lower.startsWith("o1-") ||
+               lower.startsWith("o3-") || lower.startsWith("o4-") || lower.startsWith("chatgpt-") ||
+               lower.startsWith("claude-") || lower.startsWith("gemini-") ||
+               lower.startsWith("openrouter/") || lower.startsWith("anthropic/") || lower.startsWith("minimax-");
+    }
+
+    private Map<String, Object> invokeModel(List<Map<String, String>> messages) {
+        if (isCloudModel(model)) {
+            if (cloudModelService == null) {
+                throw new IllegalStateException("Cloud model service not configured for model: " + model);
+            }
+            logger.info("Routing cloud model {} through CloudModelService", model);
+            return cloudModelService.callCloudModel(model, messages, apiKeyOverrides).block();
+        }
+
+        if (useHF) {
+            return huggingFaceService.chatCompletion(model, messages).block();
+        }
+
+        return ollamaService.chatCompletion(model, messages).block();
     }
 
     private Map<String, Object> parseRecommendations(String content, Map<String, Object> response) {

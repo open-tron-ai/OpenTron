@@ -1,0 +1,392 @@
+Review summary
+I reviewed the available application source under frontend and project metadata. The backend package under OpenTron appears to contain only the server/static output for the frontend build, so I could not review Python backend logic here.
+
+What’s good
+App.tsx is structured clearly with route definitions and side effects separated.
+Zustand is used for centralized state management.
+The app has explicit offline / Tauri-aware API handling.
+The UI code generally avoids huge monolithic files except for a few components.
+Key issues and improvement opportunities
+1. api.ts is duplicated and brittle
+getSettingsApiUrl() and getApiKey() both parse localStorage separately.
+apiFetch() assumes init.headers is a plain object, which is not always true for RequestInit.headers.
+authHeaders() mutates the extra object if passed in.
+Suggested improvements:
+
+Create a shared loadSettings() helper and reuse it.
+Normalize headers explicitly using new Headers(init.headers).
+Use a pure merge strategy for headers.
+2. Large component responsibilities
+InputArea.tsx is very large and mixes:
+
+text input/resizing
+speech recording
+message send flow
+streaming SSE handling
+coordinator event updates
+App.tsx has many unrelated side effects in one component:
+
+theme
+overlay polling
+model fetch
+server info fetch
+savings polling
+opt-in modal logic
+keyboard shortcuts
+Suggested improvements:
+
+Extract useModels, useServerInfo, useSavingsPolling, useOverlayImport, etc.
+Split InputArea into smaller hooks/components:
+useChatStream
+useTextAreaAutoResize
+useSpeechInput
+useCorpusSync
+3. Async cleanup and cancellation
+Several effects call async fetches without cancellation guards:
+App.tsx
+SetupScreen.tsx
+sse.ts uses manual SSE parsing and can leave a reader locked if not carefully cleaned up.
+Suggested improvements:
+
+Use AbortController for fetches in effects.
+Guard state updates after unmount.
+Move polling into reusable hooks with cleanup.
+4. sse.ts is too low-level and noisy
+It has many console.log() statements that look like debug output.
+The SSE parser is custom and may be fragile on chunk boundaries.
+chatCompletionSimple() logs requests/responses to console even in production.
+Suggested improvements:
+
+Remove or gate logs behind a debug flag.
+Consider using a shared SSE parser utility or TextDecoderStream.
+Standardize error messages and throw typed errors.
+5. Zustand store is too monolithic
+store.ts contains a very large single store type with many unrelated domains:
+conversations
+models
+UI
+agents
+logs
+opt-in
+Suggested improvements:
+
+Split store into slices: conversationStore, uiStore, serverStore, agentStore.
+This improves maintainability and reduces accidental re-renders.
+6. Inconsistent storage key naming
+App uses oj-setup-completed in App.tsx
+Most other local storage keys are OpenTron-*
+Suggested improvement:
+
+Use consistent naming for all persisted keys.
+7. Potential dependency mismatch
+package.json includes react-router but not react-router-dom.
+main.tsx imports BrowserRouter from react-router.
+Suggested improvement:
+
+Verify that this is intentional and works on all targets.
+Otherwise switch to react-router-dom from the standard DOM entrypoint.
+8. Error handling is too silent in some places
+Several catches simply swallow exceptions:
+api.ts Tauri fallback code
+sse.ts malformed chunk handler
+InputArea.tsx audio/stream failure handlers
+Suggested improvement:
+
+Log errors at least in development.
+Preserve meaningful details when rethrowing.
+Concrete next steps
+Refactor api.ts for shared settings parsing and robust header handling.
+Extract App.tsx side effects into hooks.
+Refactor InputArea.tsx into smaller hooks/components.
+Add cancellation support for async effects.
+Remove debug console logs from sse.ts.
+Consider splitting the Zustand store into slices.
+
+Java backend review
+I reviewed the Java backend under backend and found several architectural and code-quality issues worth fixing.
+
+What’s good
+Clear modular layout: controllers, services, agents, storage, telemetry, websocket.
+Good use of Spring Boot + WebFlux + WebSocket support.
+EngineRouting is a useful abstraction for Ollama/OpenAI detection.
+StorageService centralizes persistence concerns.
+Major issues
+1. Logging and diagnostics are not production-ready
+System.out.println(...) and System.err.println(...) are used throughout.
+This appears in OpentronBackendApplication.java, ChatController.java, AgentsController.java, MultiAgentCoordinator.java, ReactiveChatWebSocketHandler.java, StorageService.java, and many others.
+Use org.slf4j.Logger / LoggerFactory or Spring Boot logging instead.
+2. Error handling is too broad and inconsistent
+Many controllers catch Exception and either swallow it or return a raw JSON string body.
+ChatController.buildResponseMono(...) builds error responses as Mono.just(ResponseEntity.status(502).body((Object)"{\"error\":\"chat-failed\"}")).
+Returning JSON as plain Object strings is brittle and can break content negotiation.
+3. ChatController has too much responsibility
+Handles cloud model routing, HuggingFace routing, Ollama CLI routing, header forwarding, telemetry recording, and SSE response construction.
+Duplicate logic in handleCloudModelChat, handleHuggingFaceChat, and handleOllamaCliChat for converting full responses into SSE.
+extractApiKeysFromRequest(...) parses X-API-Keys manually and logs key names.
+It also retrieves TelemetryService from the servlet context instead of injecting it.
+4. Unsafe raw JSON / Map handling
+@RequestBody Map<String, Object> and unchecked casts like List<Map<String, String>> appear in ChatController, AgentsController, and others.
+This makes request validation weak and error-prone.
+Better: use DTO classes with @Validated, @JsonProperty, and explicit types.
+5. Reactive and imperative code are mixed poorly
+ChatController and EngineRouting use WebClient, but EngineRouting.detectEngineType() calls .block().
+ReactiveChatWebSocketHandler manually splits SSE chunks from a DataBuffer, which is fragile.
+AgentsController.coordinateAgents() uses Flux.create plus new Thread(...) and manual callback streaming.
+6. Thread management is ad hoc
+AgentsController spawns raw threads for task processing and cleanup (new Thread(...)).
+MultiAgentCoordinator.startMessageProcessor() creates a virtual thread executor in the constructor and adds a shutdown hook, but lifecycle management is unclear.
+ModelPreloader and ManagedAgentsController also create threads directly.
+Prefer Spring-managed executors (TaskExecutor, Scheduler) or Reactor schedulers.
+7. SSE and streaming support is brittle
+ChatController fabricates streaming chunks by splitting content on spaces.
+ReactiveChatWebSocketHandler does custom SSE parsing line-by-line and may mishandle partial packets.
+If the underlying engine can stream natively, the backend should preserve the stream rather than reconstruct it.
+8. Engine routing detection is fragile
+EngineRouting decides Ollama/OpenAI by string matching on host and by probing /api/tags.
+It blocks and may misdetect in some cases.
+translateRequestPath and shouldForward are special-cased and may be incomplete.
+9. Data persistence and transaction handling
+StorageService.saveTrace() throws generic Exception.
+computeSHA256 uses getBytes("UTF-8") instead of StandardCharsets.UTF_8.
+Duplicate trace detection is done in-memory with findByTraceHash() and may race under concurrency.
+Specific files/methods to improve
+ChatController.java
+
+centralize streaming response logic
+inject telemetry instead of manual context lookup
+avoid raw header copy and reinvented SSE bodies
+remove System.out spam
+AgentsController.java
+
+replace raw threads and in-memory task state with managed async executor/persistent queue
+avoid cleanup loop thread started in constructor
+ReactiveChatWebSocketHandler.java
+
+improve WebSocket/SSE handling and error propagation
+avoid direct buffer splitting and unsupported session.close().subscribe() inside doFinally
+EngineRouting.java
+
+remove .block() usage or isolate it behind startup probe
+make detection behavior deterministic
+ResilienceUtil.java
+
+the retry/timeout strategy is okay, but streaming should probably avoid retry entirely and use request-level backpressure support
+StorageService.java
+
+tighten exception types
+use StandardCharsets.UTF_8
+consider database-level deduplication rather than hash+lookup
+Recommended improvements
+Use @RestControllerAdvice for consistent error handling.
+Replace raw Map requests with dedicated DTOs and validation.
+Use LoggerFactory.getLogger(...) / @Slf4j.
+Use Spring-managed async execution (TaskExecutor, @Async) rather than new Thread(...).
+Centralize engine routing and response adaptation in a reusable service.
+Preserve real SSE streams from the engine instead of reconstructing them manually.
+Avoid blocking reactive code and prefer Reactor operators or separate imperative code paths.
+Make telemetry injectable, not looked up from servlet context in every request.
+Clean up pom.xml only if dependencies are unused; the current set is okay but should be audited for clarity.
+Bottom line
+The backend has a reasonable overall structure, but the implementation contains a lot of technical debt:
+
+manual threading
+ad hoc streaming
+raw JSON casting
+inconsistent error/content-type handling
+print-based logging
+Fixing those will make the backend more reliable, maintainable, and easier to test.
+
+Missing backend functionality
+I compared frontend /v1/ route usage against the Java backend controllers. These frontend routes are not implemented in backend:
+
+Missing endpoint implementations
+GET /v1/analytics/identity
+
+referenced by analytics.ts
+no matching controller found
+GET /v1/agents/events
+
+referenced by useAgentEvents.ts
+no matching controller found
+POST /v1/connectors/upload/ingest
+
+POST /v1/connectors/upload/ingest/files
+
+referenced by DataSourcesPage.tsx
+no matching connectors upload endpoints found
+POST /v1/models/pull
+
+referenced by api.ts
+no backend controller exposes this path
+Managed-agent route mismatches / missing paths
+Frontend expects many /v1/managed-agents/... endpoints that are not present in the Java backend:
+
+GET /v1/managed-agents/{id}/state
+referenced by api.ts
+GET /v1/managed-agents/{id}/messages
+referenced by api.ts
+GET /v1/managed-agents/{id}/tasks
+POST /v1/managed-agents/{id}/learning/trigger
+GET /v1/managed-agents/{id}/learning
+GET /v1/managed-agents/{id}/traces
+GET /v1/managed-agents/{id}/traces/{traceId}
+Some similar functionality exists only under /v1/agents/... in the backend, not /v1/managed-agents/..., so the frontend will still fail.
+
+Other route namespace mismatches
+GET /v1/tools/{tool}/credentials
+frontend expects this path
+backend has POST /v1/agents/tools/{toolName}/credentials instead
+Connector OAuth support
+frontend references /v1/connectors/{id}/oauth/start
+no matching OAuth connector endpoint found
+likely also missing callback handling under /v1/connectors/.../oauth/callback
+Summary
+The Java backend is missing or misaligned on several frontend-facing APIs:
+
+analytics identity
+agent event streaming
+connector upload/OAuth
+model pull
+managed-agent state/message/task/learning/traces paths
+These are the key missing functionality areas to address for frontend/backend integration.
+
+1. Chat coordinator workflow is not optimal
+InputArea.tsx uses coordinateAgents(...) with callback events, but the UI only appends event.preview when agent_done fires.
+The final tron_response from parseCoordinatorResponse(...) is then assigned in one shot and overwrites previous partial text.
+That means progress is not shown consistently:
+first preview text may appear,
+then phase updates can disappear,
+final content is injected as a whole block rather than streamed.
+There is no true letter-by-letter / character-stream rendering for coordinator mode.
+2. Progress/status line issues
+The coordinator callback updates phase on status, agent_start, agent_done, and agent_error.
+But once a chunk of text appears, the status line is not continuously updated in a way that matches the text stream.
+After the first text block, the UI can drop into a waiting phase and then clear the phase entirely when complete.
+This matches your observation that status tracking feels inconsistent after the first part.
+3. Partial responses from one agent
+The backend coordinator returns each agent result via callback.onAgentDone(agentName, result).
+But the frontend only displays event.preview from the event, not the full agent response.
+If the backend sends a complete agent response later, the frontend may still only show the preview text or the final assembled response, so partial/full display is inconsistent.
+4. No “letter-by-letter” UX for coordinator responses
+Coordinator mode does not implement incremental SSE or chunked text streaming.
+It behaves more like “preview per agent, then finish,” not like handwriting-style output.
+This is why UX feels less smooth than a normal streaming chat.
+5. Agent selection is weak / appears same model used
+Backend MultiAgentCoordinator.analyzeRequest(...) uses simple keyword matching, not real skill-based routing.
+ModelSelectorService hardcodes available models and mostly returns fallback names; it does not actually probe or vary model use robustly.
+That means the coordinator may appear to use the same model for all agents in practice.
+So yes, the “specialist based on skills” behavior is mostly stubbed / superficial.
+6. Data sources are stubbed
+Backend ConnectorsController.java only returns fake connector metadata and simple connect/disconnect responses.
+There is no real ingestion endpoint implemented for:
+/v1/connectors/upload/ingest
+/v1/connectors/upload/ingest/files
+The frontend expects these and more advanced connector sync behavior, so data source support is effectively stubbed.
+Bottom line
+Your assessment is correct:
+
+the coordinator chat workflow is incomplete and inconsistent,
+progress/status display is unreliable,
+agent skill/model selection is superficial,
+data source integration is only stubbed in the backend.
+
+Plan
+Goal
+Align the frontend and backend by fixing coordinator streaming behavior, agent progress handling, and backend route coverage.
+
+Key Findings
+InputArea.tsx has inconsistent coordinator progress handling.
+coordinator-helpers.ts final response parsing may overwrite earlier streamed text.
+MultiAgentCoordinator.java uses simple keyword agent selection and builds a single final tron_response.
+ModelSelectorService.java is stubbed and does not provide real model differentiation.
+Connector/data-source endpoints are stubbed or missing in backend controllers.
+Implementation Steps
+Document the coordinator workflow and route gaps.
+Map missing frontend-used routes to backend controllers.
+Fix frontend coordinator streaming to preserve partial text and status updates.
+Improve backend coordinator callbacks and final response assembly.
+Add route-compatible backend stubs for connectors and analytics.
+Validate with end-to-end coordinator requests and route coverage tests.
+Relevant Files
+InputArea.tsx
+coordinator-helpers.ts
+MultiAgentCoordinator.java
+ModelSelectorService.java
+ConnectorsController.java
+AgentsController.java
+Verification
+Check coordinator callback events and UI state updates.
+Confirm missing /v1/* backend routes and add stubs.
+Test a coordinator request that triggers multiple agents.
+Verify connector route responses are present and route-compatible.
+
+Why previous conversation is not remembered
+The core reason is different depending on mode:
+
+1. In Tron coordinator mode
+InputArea.tsx calls coordinateAgents(content, '', ...)
+That sends only the new user request and an optional context string
+It does not send the prior message history from the conversation
+So coordinator mode cannot “remember” earlier chat turns unless you manually pass context
+2. Remove regular chat mode which is not used anywhere (check and confirm)
+The frontend does build apiMessages from currentMessages
+It then sends that full history to /v1/chat/completions
+So the bug is likely in the backend chat pipeline, not the frontend message collection
+Backend history handling issues
+OllamaCliService.java
+converts the whole message list into a single prompt string
+user messages are appended with no clear separator
+assistant messages are prefixed with [Assistant]:
+this weak chat formatting can effectively lose turn structure
+HuggingFaceService also reformats messages into "[INST] ... [/INST]" and may not preserve conversational context cleanly
+Bottom line
+If you’re using Tron mode: the history is intentionally not sent, so it won’t remember prior turns.
+
+ Preserve chat history in Tron mode
+In InputArea.tsx, when useTronMode is true:
+gather prior conversation messages from useAppStore.getState().messages
+include them in the coordinator request payload
+Prefer additive design:
+do not remove current coordinateAgents behavior
+extend it with history or context rather than replacing existing fields
+
+. Fix coordinator progress and final response handling
+Review coordinator-helpers.ts
+ensure final tron_response does not erase streamed preview state
+In InputArea.tsx:
+keep partial agent results visible while waiting for final assembly
+update status text consistently for agent_start, agent_done, and agent_error
+Preserve existing coordinator semantics while improving UX
+5. Improve coordinator backend handling safely
+In MultiAgentCoordinator.java:
+add support for receiving conversation history if the request includes it
+preserve current keyword-based coordinator fallback behavior
+In ModelSelectorService.java:
+avoid breaking current model selection
+if changed, keep the existing fallback order intact
+6. Add or stub route-compatible backend endpoints without breaking current paths
+Identify missing frontend-used routes and add safe stubs:
+POST /v1/analytics/identity
+GET /v1/agents/events
+/v1/connectors/upload/ingest
+Keep all current backend controllers and routes working as-is
+
+7. Testing and validation
+Verify UI:
+Tron Coordinator mode still works
+Verify Tron mode:
+remembers prior conversation history
+still uses coordinator path
+Run route checks for backend compatibility
+Confirm no regressions in existing features before merging
+Key Files
+InputArea.tsx
+coordinator-helpers.ts
+api.ts
+MultiAgentCoordinator.java
+ModelSelectorService.java
+ChatController.java
+This plan is designed to add functionality without  breaking existing coordinator behavior.
+
+DO NOT BREAK EXISTING FUNCTIONALITY ! Keep things clean and simple.
+Think like a senior SW engineer

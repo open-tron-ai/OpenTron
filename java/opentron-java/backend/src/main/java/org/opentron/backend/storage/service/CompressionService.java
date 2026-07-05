@@ -2,6 +2,8 @@ package org.opentron.backend.storage.service;
 
 import com.github.luben.zstd.Zstd;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.Base64;
 
 /**
@@ -13,6 +15,7 @@ public class CompressionService {
     
     private static final int COMPRESSION_LEVEL = 3;  // Balance speed vs compression ratio
     private static final long MAX_DECOMPRESSED_SIZE = 100 * 1024 * 1024;  // 100MB max
+    private static final Logger logger = LoggerFactory.getLogger(CompressionService.class);
     
     /**
      * Compress raw bytes using Zstd
@@ -22,7 +25,7 @@ public class CompressionService {
             return new byte[0];
         }
         byte[] compressed = Zstd.compress(data, COMPRESSION_LEVEL);
-        System.out.println("[CompressionService] Compressed " + data.length + " bytes to " + compressed.length + " bytes");
+        logger.info("Compressed {} bytes to {} bytes", data.length, compressed.length);
         return compressed;
     }
     

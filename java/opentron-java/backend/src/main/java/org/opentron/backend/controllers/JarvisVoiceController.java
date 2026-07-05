@@ -42,9 +42,9 @@ public class JarvisVoiceController {
      */
     @PostMapping("/speak")
     public ResponseEntity<JarvisVoiceService.SynthesisResponse> speak(
-            @RequestBody Map<String, String> request) {
+            @RequestBody org.opentron.backend.dto.JarvisSpeakRequest request) {
         
-        String text = request.get("text");
+        String text = request.getText();
         if (text == null || text.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(
                 JarvisVoiceService.SynthesisResponse.error("Text is required")

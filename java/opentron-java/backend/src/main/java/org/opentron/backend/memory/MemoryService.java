@@ -3,6 +3,8 @@ package org.opentron.backend.memory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -17,6 +19,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class MemoryService {
+
+    private static final Logger logger = LoggerFactory.getLogger(MemoryService.class);
 
     private final ConcurrentHashMap<String, MemoryEntry> store = new ConcurrentHashMap<>();
     private final ObjectMapper mapper = new ObjectMapper();
@@ -36,13 +40,13 @@ public class MemoryService {
                     try {
                         MemoryEntry e = mapper.readValue(line, MemoryEntry.class);
                         store.put(e.getId(), e);
-                    } catch (IOException ex) {
-                        System.err.println("Failed to parse memory line: " + ex.getMessage());
+                        } catch (IOException ex) {
+                        logger.warn("Failed to parse memory line", ex);
                     }
                 });
             }
         } catch (IOException e) {
-            System.err.println("Failed to read memory file: " + e.getMessage());
+            logger.warn("Failed to read memory file", e);
         }
     }
 
@@ -80,7 +84,7 @@ public class MemoryService {
             String json = mapper.writeValueAsString(e);
             Files.writeString(this.filePath, json + System.lineSeparator(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException ex) {
-            System.err.println("Failed to persist memory entry: " + ex.getMessage());
+            logger.warn("Failed to persist memory entry", ex);
         }
     }
 }

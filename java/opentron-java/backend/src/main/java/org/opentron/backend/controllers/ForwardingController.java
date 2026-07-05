@@ -2,6 +2,8 @@ package org.opentron.backend.controllers;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.opentron.backend.util.EngineRouting;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.core.io.buffer.DataBufferUtils;
@@ -26,6 +28,8 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/v1")
 public class ForwardingController {
 
+    private static final Logger logger = LoggerFactory.getLogger(ForwardingController.class);
+
     private final WebClient webClient;
     private final EngineRouting engineRouting;
 
@@ -44,13 +48,13 @@ public class ForwardingController {
             // is a backend-internal endpoint (telemetry, connectors, etc.) we
             // should not proxy it to Ollama — return 404 instead of forwarding.
             if (!engineRouting.shouldForward(path)) {
-                System.out.println("[ForwardingController] Not forwarding path to engine: " + path);
+                logger.debug("Not forwarding path to engine: {}", path);
                 return Mono.just(ResponseEntity.status(404).body(Flux.empty()));
             }
             String uri = translatedPath + (queryString != null ? "?" + queryString : "");
             String method = request.getMethod();
 
-            System.out.println("[ForwardingController] Forwarding to engine: " + method + " " + uri);
+            logger.info("Forwarding to engine: {} {}", method, uri);
 
             WebClient.RequestBodySpec spec = webClient.method(HttpMethod.valueOf(method)).uri(uri);
 
@@ -88,8 +92,7 @@ public class ForwardingController {
                 .onErrorResume(e -> handleForwardError(e, method, uri));
 
         } catch (Exception ex) {
-            System.err.println("[ForwardingController] Error: " + ex.getMessage());
-            ex.printStackTrace();
+            logger.error("Error in forwarding proxy", ex);
             return Mono.just(ResponseEntity.status(500).body(Flux.empty()));
         }
     }
@@ -116,8 +119,7 @@ public class ForwardingController {
     }
 
     private Mono<ResponseEntity<Flux<DataBuffer>>> handleForwardError(Throwable e, String method, String uri) {
-        System.err.println("[ForwardingController] Forward error for " + method + " " + uri + ": " + e.getMessage());
-        e.printStackTrace(System.err);
+        logger.warn("Forward error for {} {}: {}", method, uri, e.getMessage(), e);
         return Mono.just(ResponseEntity.status(502).body(Flux.empty()));
     }
 }

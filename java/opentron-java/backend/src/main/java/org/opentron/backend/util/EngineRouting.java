@@ -9,9 +9,13 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class EngineRouting {
+
+    private static final Logger logger = LoggerFactory.getLogger(EngineRouting.class);
 
     public enum EngineType {
         AUTO,
@@ -130,7 +134,7 @@ public class EngineRouting {
 
     private EngineType detectEngineType() {
         if (engineHost.contains("ollama") || engineHost.contains(":11434") || engineHost.contains("ollama:") ) {
-            System.out.println("[EngineRouting] engine.host looks like Ollama: " + engineHost);
+            logger.info("engine.host looks like Ollama: {}", engineHost);
             return EngineType.OLLAMA;
         }
 
@@ -145,7 +149,7 @@ public class EngineRouting {
                             || response.statusCode().value() == 401
                             || response.statusCode().value() == 403) {
                         response.bodyToMono(Void.class).block(Duration.ofSeconds(1));
-                        System.out.println("[EngineRouting] detected Ollama via /api/tags response " + response.statusCode());
+                        logger.info("Detected Ollama via /api/tags response {}", response.statusCode());
                         return EngineType.OLLAMA;
                     }
                     response.bodyToMono(Void.class).block(Duration.ofSeconds(1));
@@ -153,7 +157,7 @@ public class EngineRouting {
                 }
             }
         } catch (Exception ignored) {
-            System.out.println("[EngineRouting] /api/tags probe failed, treating as OpenAI-compatible");
+            logger.debug("/api/tags probe failed, treating as OpenAI-compatible", ignored);
         }
         return EngineType.OPENAI;
     }

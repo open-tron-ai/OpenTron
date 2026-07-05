@@ -2,6 +2,8 @@ package org.opentron.backend.config;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,6 +11,7 @@ import javax.sql.DataSource;
 
 @Configuration
 public class StorageConfig {
+    private static final Logger logger = LoggerFactory.getLogger(StorageConfig.class);
     
     /**
      * HikariCP Connection Pool for PostgreSQL
@@ -25,8 +28,8 @@ public class StorageConfig {
             throw new RuntimeException("PostgreSQL connection requires POSTGRES_URL, POSTGRES_USER, POSTGRES_PASSWORD environment variables");
         }
         
-        System.out.println("[StorageConfig] Configuring PostgreSQL connection pool");
-        System.out.println("[StorageConfig] URL: " + url);
+        logger.info("Configuring PostgreSQL connection pool");
+        logger.debug("URL: {}", url);
         
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(url);
@@ -41,7 +44,7 @@ public class StorageConfig {
         config.setDriverClassName("org.postgresql.Driver");
         config.setPoolName("OpentronHikariPool");
         
-        System.out.println("[StorageConfig] Connection pool initialized: max=" + config.getMaximumPoolSize() + ", min=" + config.getMinimumIdle());
+        logger.info("Connection pool initialized: max={}, min={}", config.getMaximumPoolSize(), config.getMinimumIdle());
         
         return new HikariDataSource(config);
     }

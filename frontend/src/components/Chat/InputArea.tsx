@@ -181,6 +181,11 @@ export function InputArea() {
       convId = createConversation(useTronMode ? 'Tron' : selectedModel);
     }
 
+    const priorMessages = useAppStore.getState().messages;
+    const contextHistory = priorMessages
+      .map((m) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`)
+      .join('\n\n');
+
     const userMsg: ChatMessage = {
       id: generateId(),
       role: 'user',
@@ -234,7 +239,7 @@ export function InputArea() {
           accumulatedContent = '';
           accumulatedContentRef.current = '';
 
-          const coordinatorResponse = await coordinateAgents(content, '', (event) => {
+          const coordinatorResponse = await coordinateAgents(content, contextHistory, (event) => {
             if (event.type === 'status') {
               setStreamState({ phase: event.message || 'Coordinating...' });
             } else if (event.type === 'agent_start') {
@@ -255,11 +260,17 @@ export function InputArea() {
 
           const parsed = parseCoordinatorResponse(coordinatorResponse);
 
-          // Use full tron_response as final content
-          if (parsed.tronResponse && parsed.tronResponse !== 'Processing complete.') {
-            accumulatedContent = parsed.tronResponse;
-          } else if (accumulatedContentRef.current) {
+          // Preserve accumulated partial results and append final summary if available
+          if (accumulatedContentRef.current) {
+            // We have incremental agent results — keep them
             accumulatedContent = accumulatedContentRef.current;
+            // If there's a final tron_response that differs from our accumulation, append it as a summary
+            if (parsed.tronResponse && parsed.tronResponse !== 'Processing complete.' && !accumulatedContent.includes(parsed.tronResponse)) {
+              accumulatedContent += '\n\n---\n\n**Final Summary:**\n' + parsed.tronResponse;
+            }
+          } else if (parsed.tronResponse && parsed.tronResponse !== 'Processing complete.') {
+            // No incremental results, use the final tron_response
+            accumulatedContent = parsed.tronResponse;
           } else {
             accumulatedContent = 'Processing complete.';
           }

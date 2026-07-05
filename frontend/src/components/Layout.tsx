@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { Outlet, useNavigate } from 'react-router';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { ApprovalBell } from './ApprovalBell';
 import { Sidebar } from './Sidebar/Sidebar';
 import { SystemPulse } from './SystemPulse';

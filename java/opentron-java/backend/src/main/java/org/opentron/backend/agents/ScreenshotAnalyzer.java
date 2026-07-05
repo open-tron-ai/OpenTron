@@ -1,6 +1,8 @@
 package org.opentron.backend.agents;
 
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.*;
 import java.io.BufferedReader;
@@ -14,6 +16,7 @@ public class ScreenshotAnalyzer {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final String LLAVA_MODEL = "llava";
+    private static final Logger logger = LoggerFactory.getLogger(ScreenshotAnalyzer.class);
 
     /**
      * Analyze a screenshot using LLaVA vision model via HTTP API
@@ -22,7 +25,7 @@ public class ScreenshotAnalyzer {
         long startTime = System.currentTimeMillis();
 
         try {
-            System.out.println("[ScreenshotAnalyzer] Analyzing screenshot with LLaVA...");
+            logger.info("Analyzing screenshot with LLaVA");
             
             // Remove data URI prefix if present
             if (imageBase64.startsWith("data:")) {
@@ -47,7 +50,7 @@ public class ScreenshotAnalyzer {
             Map<String, Object> message = (Map<String, Object>) response.get("message");
             if (message != null) {
                 content = (String) message.get("content");
-                System.out.println("[ScreenshotAnalyzer] Extracted content from message");
+                logger.debug("Extracted content from message");
             } else {
                 // Fallback to choices format (OpenAI compatibility)
                 @SuppressWarnings("unchecked")
@@ -58,7 +61,7 @@ public class ScreenshotAnalyzer {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> msg = (Map<String, Object>) choice.get("message");
                     content = msg != null ? (String) msg.get("content") : "";
-                    System.out.println("[ScreenshotAnalyzer] Extracted content from choices");
+                    logger.debug("Extracted content from choices");
                 }
             }
             
@@ -73,7 +76,7 @@ public class ScreenshotAnalyzer {
                 
                 long elapsed = System.currentTimeMillis() - startTime;
                 result.put("elapsed_ms", elapsed);
-                System.out.println("[ScreenshotAnalyzer] Analysis complete in " + elapsed + "ms");
+                logger.info("Analysis complete in {}ms", elapsed);
                 return result;
             }
             
@@ -84,8 +87,7 @@ public class ScreenshotAnalyzer {
             return response;
 
         } catch (Exception e) {
-            System.err.println("[ScreenshotAnalyzer] Error: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error analyzing screenshot", e);
             long elapsed = System.currentTimeMillis() - startTime;
             return Map.of(
                 "status", "error",
@@ -134,7 +136,7 @@ public class ScreenshotAnalyzer {
                 while ((line = br.readLine()) != null) {
                     sb.append(line);
                 }
-                System.err.println("[ScreenshotAnalyzer] LLaVA error: " + sb.toString());
+                logger.warn("LLaVA error: {}", sb.toString());
             }
             throw new RuntimeException("LLaVA HTTP error " + responseCode);
         }

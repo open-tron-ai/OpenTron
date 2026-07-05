@@ -1,6 +1,8 @@
 package org.opentron.backend.controllers;
 
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 import org.opentron.backend.agents.ProjectGenerationService;
 
@@ -11,6 +13,8 @@ import org.opentron.backend.agents.ProjectGenerationService;
 @RestController
 @RequestMapping("/v1/generate")
 public class ProjectGenerationController {
+
+        private static final Logger logger = LoggerFactory.getLogger(ProjectGenerationController.class);
 
     private final ProjectGenerationService projectGenerator;
 
@@ -46,26 +50,26 @@ public class ProjectGenerationController {
      *   "elapsed_ms": 3240
      * }
      */
-    @PostMapping("/project")
-    public Map<String, Object> generateProject(@RequestBody Map<String, String> request) {
-        String projectName = request.getOrDefault("name", "NewProject");
-        String projectType = request.getOrDefault("type", "React TypeScript");
-        String description = request.getOrDefault("description", "");
+        @PostMapping("/project")
+        public Map<String, Object> generateProject(@RequestBody org.opentron.backend.dto.GenerateProjectRequest request) {
+                String projectName = request.getName() == null ? "NewProject" : request.getName();
+                String projectType = request.getType() == null ? "React TypeScript" : request.getType();
+                String description = request.getDescription() == null ? "" : request.getDescription();
 
-        System.out.println("[ProjectGenerationController] 📦 Generating project: " + projectName);
+                logger.info("Generating project: {}", projectName);
 
-        try {
-            Map<String, Object> result = projectGenerator.generateProject(projectName, description, projectType);
-            return result;
-        } catch (Exception e) {
-            System.err.println("[ProjectGenerationController] ❌ Error: " + e.getMessage());
-            return Map.of(
-                    "status", "error",
-                    "error", e.getMessage(),
-                    "project_name", projectName
-            );
+                try {
+                        Map<String, Object> result = projectGenerator.generateProject(projectName, description, projectType);
+                        return result;
+                } catch (Exception e) {
+                        logger.error("Error generating project {}", projectName, e);
+                        return Map.of(
+                                        "status", "error",
+                                        "error", e.getMessage(),
+                                        "project_name", projectName
+                        );
+                }
         }
-    }
 
     /**
      * GET /v1/generate/templates
@@ -133,12 +137,12 @@ public class ProjectGenerationController {
      *   "project_name": "MyAuthApp"
      * }
      */
-    @PostMapping("/from-template")
-    public Map<String, Object> generateFromTemplate(@RequestBody Map<String, String> request) {
-        String templateId = request.getOrDefault("template_id", "react-auth");
-        String projectName = request.getOrDefault("project_name", "NewProject");
+        @PostMapping("/from-template")
+        public Map<String, Object> generateFromTemplate(@RequestBody org.opentron.backend.dto.GenerateFromTemplateRequest request) {
+                String templateId = request.getTemplate_id() == null ? "react-auth" : request.getTemplate_id();
+                String projectName = request.getProject_name() == null ? "NewProject" : request.getProject_name();
 
-        System.out.println("[ProjectGenerationController] 📦 Generating from template: " + templateId);
+                logger.info("Generating from template: {}", templateId);
 
         // Map template to generation parameters
         Map<String, String> templateMap = Map.ofEntries(
@@ -156,11 +160,8 @@ public class ProjectGenerationController {
                 : templateId.contains("fastapi") ? "Python FastAPI"
                 : "React TypeScript";
 
-        return generateProject(Map.of(
-                "name", projectName,
-                "type", projectType,
-                "description", description
-        ));
+        org.opentron.backend.dto.GenerateProjectRequest req = new org.opentron.backend.dto.GenerateProjectRequest(projectName, projectType, description);
+        return generateProject(req);
     }
 
     /**
@@ -193,50 +194,50 @@ public class ProjectGenerationController {
      *   "context": "I'm using Material-UI and React Query"
      * }
      */
-    @PostMapping("/code")
-    public Map<String, Object> generateCode(@RequestBody Map<String, String> request) {
-        String codeRequest = request.getOrDefault("request", "");
-        String language = request.getOrDefault("language", "typescript");
-        String context = request.getOrDefault("context", "");
+        @PostMapping("/code")
+        public Map<String, Object> generateCode(@RequestBody org.opentron.backend.dto.GenerateCodeRequest request) {
+                String codeRequest = request.getRequest() == null ? "" : request.getRequest();
+                String language = request.getLanguage() == null ? "typescript" : request.getLanguage();
+                String context = request.getContext() == null ? "" : request.getContext();
 
-        System.out.println("[ProjectGenerationController] 💻 Generating code snippet");
+                logger.info("Generating code snippet");
 
-        if (codeRequest.isEmpty()) {
-            return Map.of(
-                    "status", "error",
-                    "error", "request parameter is required"
-            );
-        }
+                if (codeRequest.isEmpty()) {
+                        return Map.of(
+                                        "status", "error",
+                                        "error", "request parameter is required"
+                        );
+                }
 
-        try {
-            // Use backend agent for code generation
-            String prompt = String.format("""
-                    Generate clean, production-ready %s code.
+                try {
+                        // Use backend agent for code generation
+                        String prompt = String.format("""
+                                        Generate clean, production-ready %s code.
                     
-                    Request: %s
-                    Context: %s
+                                        Request: %s
+                                        Context: %s
                     
-                    Provide:
-                    1. Complete, working code
-                    2. Clear comments
-                    3. Error handling
-                    4. Type hints (if applicable)
-                    5. Usage example
-                    """, language, codeRequest, context);
+                                        Provide:
+                                        1. Complete, working code
+                                        2. Clear comments
+                                        3. Error handling
+                                        4. Type hints (if applicable)
+                                        5. Usage example
+                                        """, language, codeRequest, context);
 
-            // This would call the backend agent directly
-            return Map.of(
-                    "status", "success",
-                    "language", language,
-                    "request", codeRequest,
-                    "code", "// Generated code would appear here",
-                    "message", "Code generation endpoint ready"
-            );
-        } catch (Exception e) {
-            return Map.of(
-                    "status", "error",
-                    "error", e.getMessage()
-            );
+                        // This would call the backend agent directly
+                        return Map.of(
+                                        "status", "success",
+                                        "language", language,
+                                        "request", codeRequest,
+                                        "code", "// Generated code would appear here",
+                                        "message", "Code generation endpoint ready"
+                        );
+                } catch (Exception e) {
+                        return Map.of(
+                                        "status", "error",
+                                        "error", e.getMessage()
+                        );
+                }
         }
-    }
 }

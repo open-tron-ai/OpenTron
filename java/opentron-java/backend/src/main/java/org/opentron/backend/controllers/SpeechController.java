@@ -60,10 +60,10 @@ public class SpeechController {
 
     @PostMapping(path = "/synthesize", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<Map<String, Object>>> synthesizeText(
-            @RequestBody Map<String, String> request) {
+            @RequestBody org.opentron.backend.dto.SynthesizeTextRequest request) {
         
-        String text = request.getOrDefault("text", "");
-        String voice = request.getOrDefault("voice", "");
+        String text = request.getText() == null ? "" : request.getText();
+        String voice = request.getVoice() == null ? "" : request.getVoice();
         
         if (text.isEmpty()) {
             Map<String, Object> error = new LinkedHashMap<>();

@@ -11,6 +11,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.opentron.backend.util.EngineRouting;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.opentron.backend.websocket.ReactiveChatWebSocketHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import reactor.netty.http.client.HttpClient;
 import io.netty.channel.ChannelOption;
@@ -22,13 +24,16 @@ import org.springframework.web.reactive.function.client.ClientResponse;
 import reactor.core.publisher.Mono;
 
 @SpringBootApplication
+@EnableAsync
 public class OpentronBackendApplication {
+
+    private static final Logger logger = LoggerFactory.getLogger(OpentronBackendApplication.class);
+
     public static void main(String[] args) {
         try {
             SpringApplication.run(OpentronBackendApplication.class, args);
         } catch (Throwable e) {
-            System.err.println("[OpentronBackendApplication] Startup failed:");
-            e.printStackTrace(System.err);
+            logger.error("Startup failed", e);
             System.exit(1);
         }
     }
@@ -58,7 +63,7 @@ public class OpentronBackendApplication {
     @Bean
     public WebClient webClient(@Value("${engine.host:http://localhost:11434}") String engineHost,
                                @Value("${engine.apiKey:}") String apiKey) {
-        System.out.println("[OpentronBackendApplication] engine.host=" + engineHost + " apiKey=" + (apiKey == null ? "<null>" : apiKey.isBlank() ? "<blank>" : "<set>"));
+        logger.info("engine.host={} apiKey={}", engineHost, (apiKey == null ? "<null>" : apiKey.isBlank() ? "<blank>" : "<set>"));
 
         reactor.netty.resources.ConnectionProvider provider = reactor.netty.resources.ConnectionProvider.builder("opentron-pool")
             .maxConnections(200)

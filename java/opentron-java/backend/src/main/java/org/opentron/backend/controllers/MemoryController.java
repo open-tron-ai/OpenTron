@@ -1,5 +1,7 @@
 package org.opentron.backend.controllers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +12,8 @@ import org.opentron.backend.storage.entities.AgentMemory;
 @RestController
 @RequestMapping("/v1/memory")
 public class MemoryController {
+
+    private static final Logger logger = LoggerFactory.getLogger(MemoryController.class);
 
     @Autowired
     private StorageService storageService;
@@ -26,10 +30,10 @@ public class MemoryController {
             response.put("last_indexed", System.currentTimeMillis());
             response.put("traces", stats.totalTraceEntries);
             
-            System.out.println("[MemoryController] 📊 Memory stats: " + stats.toString());
+            logger.info("Memory stats: {}", stats.toString());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.err.println("[MemoryController] ⚠️ Error getting stats: " + e.getMessage());
+            logger.warn("Error getting memory stats", e);
             
             // Return mock data if database unavailable
             return ResponseEntity.ok(Map.of(
@@ -54,24 +58,24 @@ public class MemoryController {
     }
 
     @PostMapping("/store")
-    public ResponseEntity<Map<String, Object>> storeMemory(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Map<String, Object>> storeMemory(@RequestBody org.opentron.backend.dto.MemoryStoreRequest payload) {
         try {
-            String agentName = (String) payload.getOrDefault("agent_name", "unknown");
-            String rawTrace = (String) payload.getOrDefault("content", "");
-            String summary = (String) payload.getOrDefault("summary", "");
-            
+            String agentName = payload.getAgent_name() == null ? "unknown" : payload.getAgent_name();
+            String rawTrace = payload.getContent() == null ? "" : payload.getContent();
+            String summary = payload.getSummary() == null ? "" : payload.getSummary();
+
             AgentMemory memory = storageService.saveAgentMemory(agentName, rawTrace, summary);
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("status", "stored");
             response.put("id", memory.getId());
             response.put("agent", agentName);
             response.put("timestamp", System.currentTimeMillis());
-            
-            System.out.println("[MemoryController] 💾 Memory stored with ID: " + memory.getId());
+
+            logger.info("Memory stored with ID: {}", memory.getId());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.err.println("[MemoryController] ❌ Error storing memory: " + e.getMessage());
+            logger.error("Error storing memory", e);
             Map<String, Object> errorMap = new HashMap<>();
             errorMap.put("status", "error");
             errorMap.put("error", e.getMessage());
@@ -80,11 +84,11 @@ public class MemoryController {
     }
 
     @PostMapping("/search")
-    public ResponseEntity<Map<String, Object>> searchMemory(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Map<String, Object>> searchMemory(@RequestBody org.opentron.backend.dto.MemorySearchRequest payload) {
         try {
-            String query = (String) payload.get("query");
-            String agentName = (String) payload.getOrDefault("agent_name", "");
-            int topK = payload.containsKey("top_k") ? ((Number) payload.get("top_k")).intValue() : 5;
+            String query = payload.getQuery();
+            String agentName = payload.getAgent_name() == null ? "" : payload.getAgent_name();
+            int topK = payload.getTop_k() == null ? 5 : Math.min(payload.getTop_k(), 100);
             
             // Load recent memory for the agent
             List<AgentMemory> memories = storageService.loadAgentMemory(agentName, Math.min(topK, 100));
@@ -109,15 +113,15 @@ public class MemoryController {
             response.put("source", "postgresql");
             response.put("timestamp", System.currentTimeMillis());
             
-            System.out.println("[MemoryController] 🔍 Search found " + results.size() + " results for query: " + query);
+            logger.info("Search found {} results for query: {}", results.size(), query);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.err.println("[MemoryController] ❌ Error searching memory: " + e.getMessage());
+            logger.warn("Error searching memory", e);
             
             // Return mock results if database unavailable
             List<Map<String, Object>> results = new ArrayList<>();
-            String query = (String) payload.get("query");
-            int topK = payload.containsKey("top_k") ? ((Number) payload.get("top_k")).intValue() : 5;
+            String query = payload.getQuery() == null ? "" : payload.getQuery();
+            int topK = payload.getTop_k() == null ? 5 : payload.getTop_k();
             
             for (int i = 0; i < topK; i++) {
                 Map<String, Object> result = new HashMap<>();
@@ -132,10 +136,12 @@ public class MemoryController {
     }
 
     @PostMapping("/index")
-    public ResponseEntity<Map<String, Object>> indexPath(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Map<String, Object>> indexPath(@RequestBody org.opentron.backend.dto.IndexPathRequest payload) {
         return ResponseEntity.ok(Map.of(
             "chunks_indexed", 42,
-            "note", "Successfully indexed path"
+            "note", "Successfully indexed path",
+            "path", payload.getPath(),
+            "recursive", payload.isRecursive()
         ));
     }
     
@@ -166,10 +172,10 @@ public class MemoryController {
             response.put("agent", agentId);
             response.put("source", "postgresql");
             
-            System.out.println("[MemoryController] 📚 Loaded " + memoryList.size() + " memories for " + agentId);
+            logger.info("Loaded {} memories for {}", memoryList.size(), agentId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.err.println("[MemoryController] ❌ Error loading agent memory: " + e.getMessage());
+            logger.error("Error loading agent memory", e);
             Map<String, Object> errorMap = new HashMap<>();
             errorMap.put("error", e.getMessage());
             return ResponseEntity.status(500).body(errorMap);
@@ -193,7 +199,7 @@ public class MemoryController {
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.err.println("[MemoryController] ❌ Error getting detailed stats: " + e.getMessage());
+            logger.error("Error getting detailed memory stats", e);
             Map<String, Object> errorMap = new HashMap<>();
             errorMap.put("error", e.getMessage());
             return ResponseEntity.status(500).body(errorMap);

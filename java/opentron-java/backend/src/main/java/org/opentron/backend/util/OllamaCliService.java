@@ -2,6 +2,8 @@ package org.opentron.backend.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -19,6 +21,7 @@ import java.util.Map;
 public class OllamaCliService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Logger logger = LoggerFactory.getLogger(OllamaCliService.class);
     private static final String OLLAMA_API = "http://127.0.0.1:11434/api/generate";
     private static final String OLLAMA_TAGS = "http://127.0.0.1:11434/api/tags";
 
@@ -31,7 +34,7 @@ public class OllamaCliService {
     }
 
     private Map<String, Object> callOllama(String requestedModel, String promptStr) throws Exception {
-        System.out.println("[OllamaCliService] Calling Ollama: " + requestedModel);
+        logger.info("Calling Ollama: {}", requestedModel);
 
         java.net.URL url = new java.net.URL(OLLAMA_API);
         java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
@@ -57,7 +60,7 @@ public class OllamaCliService {
             os.flush();
         }
 
-        System.out.println("[OllamaCliService] Waiting for " + requestedModel + "...");
+        logger.debug("Waiting for {}...", requestedModel);
         int responseCode = conn.getResponseCode();
         String responseText;
 
@@ -88,7 +91,7 @@ public class OllamaCliService {
             ? ((Number) ollamaResp.get("eval_count")).longValue() : 0;
         long totalTokens = promptTokens + completionTokens;
 
-        System.out.println("[OllamaCliService] Done: " + responseContent.length() + " chars, " + totalTokens + " tokens");
+        logger.info("Done: {} chars, {} tokens", responseContent.length(), totalTokens);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("model", requestedModel);
@@ -169,7 +172,7 @@ public class OllamaCliService {
                     return modelNames;
                 }
             } catch (Exception e) {
-                System.err.println("[OllamaCliService] Error listing models: " + e.getMessage());
+                logger.warn("Error listing models", e);
                 return List.of();
             }
         }).subscribeOn(Schedulers.boundedElastic());

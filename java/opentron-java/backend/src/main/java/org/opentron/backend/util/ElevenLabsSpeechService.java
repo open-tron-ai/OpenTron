@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -17,6 +19,8 @@ import java.util.List;
 
 @Service
 public class ElevenLabsSpeechService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ElevenLabsSpeechService.class);
 
     @Value("${elevenlabs.api-key:sk_35acb9084a826cd92cf7d3e646e181998f2680f3d2333f56}")
     private String elevenLabsApiKey;
@@ -80,7 +84,7 @@ public class ElevenLabsSpeechService {
         result.put("confidence", 0.95);
         result.put("duration_seconds", audioFile.getSize() / 16000.0);
         
-        System.out.println("[ElevenLabsSpeechService] Transcription (mock): Hello world");
+        logger.info("Transcription (mock): Hello world");
         return result;
     }
 
@@ -142,11 +146,10 @@ public class ElevenLabsSpeechService {
             result.put("duration_estimate_ms", (text.length() / 4.7 * 1000)); // Rough estimate
             
             long duration = System.currentTimeMillis() - startTime;
-            System.out.println("[ElevenLabsSpeechService] TTS generated: " + text.length() + " chars in " + duration + "ms");
-            
+            logger.info("TTS generated: {} chars in {}ms", text.length(), duration);
             return result;
         } catch (Exception e) {
-            System.err.println("[ElevenLabsSpeechService] Error: " + e.getMessage());
+            logger.error("TTS generation error", e);
             throw new Exception("TTS generation failed: " + e.getMessage());
         }
     }

@@ -3,6 +3,8 @@ package org.opentron.backend.websocket;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.MediaType;
@@ -18,6 +20,8 @@ import java.nio.charset.StandardCharsets;
 
 public class ReactiveChatWebSocketHandler implements WebSocketHandler {
 
+    private static final Logger logger = LoggerFactory.getLogger(ReactiveChatWebSocketHandler.class);
+
     private final WebClient webClient;
     private final EngineRouting engineRouting;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -29,13 +33,13 @@ public class ReactiveChatWebSocketHandler implements WebSocketHandler {
 
     @Override
     public Mono<Void> handle(WebSocketSession session) {
-        System.out.println("[ReactiveChatWebSocketHandler] new websocket connection");
+        logger.info("new websocket connection");
 
         // Receive first message (chat request), POST to engine, stream SSE chunks back
         return session.receive().next()
                 .flatMap(firstMsg -> {
                     String payload = firstMsg.getPayloadAsText();
-                    System.out.println("[ReactiveChatWebSocketHandler] received payload: " + payload);
+                    logger.debug("received payload: {}", payload);
 
                     // POST to engine's chat API path with stream=true
                     String targetPath = engineRouting.translateRequestPath("/v1/chat/completions");
@@ -65,8 +69,8 @@ public class ReactiveChatWebSocketHandler implements WebSocketHandler {
                                                     .then(Mono.just(data));
                                         });
                             })
-                            .doOnError(e -> System.out.println("[ReactiveChatWebSocketHandler] engine error: " + e))
-                            .doOnCancel(() -> System.out.println("[ReactiveChatWebSocketHandler] stream cancelled"))
+                            .doOnError(e -> logger.warn("engine error", e))
+                            .doOnCancel(() -> logger.debug("stream cancelled"))
                             .then();
                 })
                 .doFinally(sig -> {
@@ -75,7 +79,7 @@ public class ReactiveChatWebSocketHandler implements WebSocketHandler {
                     } catch (Exception ignored) {}
                 })
                 .onErrorResume(e -> {
-                    System.out.println("[ReactiveChatWebSocketHandler] error: " + e);
+                    logger.error("WebSocket handler error", e);
                     return session.send(Mono.just(session.textMessage("{\"error\":\"" + e.getMessage() + "\"}")))
                             .then();
                 });

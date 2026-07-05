@@ -108,9 +108,19 @@ export function SetupScreen({ onReady }: { onReady: () => void }) {
   }, [onReady]);
 
   useEffect(() => {
-    poll();
-    const interval = setInterval(poll, 800);
-    return () => clearInterval(interval);
+    let active = true;
+    const wrappedPoll = async () => {
+      if (!active) return;
+      await poll();
+    };
+    wrappedPoll();
+    const interval = setInterval(() => {
+      if (active) void wrappedPoll();
+    }, 800);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [poll]);
 
   const activeStep: StepKey | null =

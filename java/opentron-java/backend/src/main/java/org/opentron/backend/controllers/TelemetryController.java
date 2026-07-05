@@ -44,11 +44,11 @@ public class TelemetryController {
     }
 
     @PostMapping("/track")
-    public ResponseEntity<Map<String, String>> trackTelemetry(@RequestBody Map<String, Object> data) {
+    public ResponseEntity<Map<String, String>> trackTelemetry(@RequestBody org.opentron.backend.dto.TelemetryTrackRequest data) {
         telemetryService.recordRequest();
-        Object tokens = data.get("tokens");
-        if (tokens instanceof Number) {
-            telemetryService.addTokens(((Number) tokens).longValue());
+        Long tokens = data.getTokens();
+        if (tokens != null) {
+            telemetryService.addTokens(tokens);
         }
         return ResponseEntity.ok(Map.of("status", "tracked"));
     }

@@ -3,6 +3,8 @@ package org.opentron.backend.controllers;
 import java.util.Map;
 import java.util.List;
 import java.util.HashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.opentron.backend.util.EngineRouting;
 import org.opentron.backend.util.OllamaCliService;
@@ -28,6 +30,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/v1/chat")
 public class ChatController {
+    private static final Logger logger = LoggerFactory.getLogger(ChatController.class);
 
     private final WebClient webClient;
     private final EngineRouting engineRouting;
@@ -64,16 +67,16 @@ public class ChatController {
                 @SuppressWarnings("unchecked")
                 Map<String, String> parsed = objectMapper.readValue(apiKeysHeader, Map.class);
                 apiKeys.putAll(parsed);
-                System.out.println("[ChatController] 🔑 Received API keys for: " + parsed.keySet());
+                logger.debug("Received API keys for: {}", parsed.keySet());
             }
         } catch (Exception e) {
-            System.err.println("[ChatController] Could not parse API keys header: " + e.getMessage());
+            logger.warn("Could not parse API keys header", e);
         }
         return apiKeys;
     }
 
     @PostMapping(value = "/completions")
-    public Mono<ResponseEntity<?>> completionsStream(HttpServletRequest servletRequest, @RequestBody Map<String, Object> payload) {
+    public Mono<ResponseEntity<?>> completionsStream(HttpServletRequest servletRequest, @RequestBody org.opentron.backend.dto.ChatCompletionRequest payload) {
         servletRequest.setAttribute("org.apache.catalina.ASYNC_TIMEOUT", -1L);
         try {
             org.springframework.context.ApplicationContext ctx = org.springframework.web.context.support.WebApplicationContextUtils.getRequiredWebApplicationContext(servletRequest.getServletContext());
@@ -81,25 +84,25 @@ public class ChatController {
             if (ts != null) ts.recordRequest();
         } catch (Exception ignored) {}
 
-        boolean stream = Boolean.TRUE.equals(payload.get("stream"));
-        String model = (String) payload.get("model");
+        boolean stream = Boolean.TRUE.equals(payload.getStream());
+        String model = payload.getModel();
         
-        System.out.println("[ChatController] Request: model=" + model + " stream=" + stream);
+        logger.info("Chat request: model={}, stream={}", model, stream);
         
         // Extract API keys from request headers
         Map<String, String> apiKeys = extractApiKeysFromRequest(servletRequest);
         
         // Check if cloud model and route accordingly
         if (isCloudModel(model)) {
-            System.out.println("[ChatController] 🌩️  Cloud model detected: " + model);
-            return handleCloudModelChat(payload, stream, servletRequest, apiKeys);
+            logger.info("Cloud model detected: {}", model);
+            return handleCloudModelChat(payload.getParams() == null ? java.util.Map.of() : payload.getParams(), stream, servletRequest, apiKeys);
         }
         
         // Check for Hugging Face mode
         String hfMode = System.getenv("HF_MODE");
         if ("local".equalsIgnoreCase(hfMode) || "api".equalsIgnoreCase(hfMode)) {
-            System.out.println("[ChatController] Using Hugging Face (" + hfMode + ")");
-            return handleHuggingFaceChat(payload, stream, servletRequest);
+            logger.info("Using Hugging Face ({})", hfMode);
+            return handleHuggingFaceChat(payload.getParams() == null ? java.util.Map.of() : payload.getParams(), stream, servletRequest);
         }
         
         // Fall back to Ollama for local models
@@ -107,14 +110,14 @@ public class ChatController {
             try {
                 servletRequest.setAttribute("org.apache.catalina.ASYNC_TIMEOUT", 180000L);
             } catch (Exception e) {
-                System.err.println("[ChatController] Could not set async timeout: " + e.getMessage());
+                logger.warn("Could not set async timeout", e);
             }
-            System.out.println("[ChatController] Using Ollama CLI");
-            return handleOllamaCliChat(payload, stream, servletRequest);
+            logger.info("Using Ollama CLI");
+            return handleOllamaCliChat(payload.getParams() == null ? java.util.Map.of() : payload.getParams(), stream, servletRequest);
         }
 
         String targetPath = engineRouting.translateRequestPath("/v1/chat/completions");
-        Mono<Map<String, Object>> resolvedPayload = resolveOllamaModel(payload);
+        Mono<Map<String, Object>> resolvedPayload = resolveOllamaModel(payload.getParams() == null ? java.util.Map.of() : payload.getParams());
         WebClient.RequestBodySpec requestBuilder = webClient.post()
                 .uri(targetPath)
                 .contentType(MediaType.APPLICATION_JSON);
@@ -139,15 +142,14 @@ public class ChatController {
         }
         requestBuilder.headers(http -> http.addAll(forwardHeaders));
 
-        System.out.println("[ChatController] forwarding to engine " + targetPath + " stream=" + stream);
+        logger.info("Forwarding to engine {} stream={}", targetPath, stream);
 
         WebClient.RequestBodySpec reqSpecBase = requestBuilder;
 
         Mono<ResponseEntity<?>> result = resolvedPayload.flatMap(resolved -> reqSpecBase.bodyValue(resolved).exchange())
             .flatMap(response -> buildResponseMono(response, stream, servletRequest))
             .onErrorResume(e -> {
-                System.err.println("[ChatController] exchange error: " + e.getMessage());
-                e.printStackTrace(System.err);
+                logger.error("Chat exchange error", e);
                 return Mono.just(ResponseEntity.status(502).body((Object)"{\"error\":\"chat-failed\"}"));
             });
 
@@ -184,12 +186,12 @@ public class ChatController {
                                 org.opentron.backend.telemetry.TelemetryService ts = ctx.getBean(org.opentron.backend.telemetry.TelemetryService.class);
                                 if (ts != null) ts.addTokens(tokens);
                             } catch (Exception e) {
-                                System.err.println("[ChatController] Could not record tokens: " + e.getMessage());
+                                logger.warn("Cloud model - could not record tokens", e);
                             }
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("[ChatController] Error extracting usage: " + e.getMessage());
+                    logger.warn("Cloud model - error extracting usage", e);
                 }
                 
                 if (stream) {
@@ -247,14 +249,12 @@ public class ChatController {
                             .body((Object)json);
                 }
             } catch (Exception e) {
-                System.err.println("[ChatController] Serialization error: " + e.getMessage());
-                e.printStackTrace(System.err);
+                logger.warn("Cloud model - Serialization error", e);
                 return ResponseEntity.status(500).body((Object)"{\"error\":\"serialization-failed\"}");
             }
         })
         .onErrorResume(e -> {
-            System.err.println("[ChatController] Cloud model error: " + e.getMessage());
-            e.printStackTrace(System.err);
+            logger.error("Cloud model error", e);
             String errMsg = e.getMessage() != null ? e.getMessage().replace("\"", "\\\"") : "unknown error";
             return Mono.<ResponseEntity<?>>just(ResponseEntity.status(502)
                     .body((Object)("{\"error\":\"cloud-model-failed\",\"message\":\"" + errMsg + "\"}")));
@@ -286,12 +286,12 @@ public class ChatController {
                                 org.opentron.backend.telemetry.TelemetryService ts = ctx.getBean(org.opentron.backend.telemetry.TelemetryService.class);
                                 if (ts != null) ts.addTokens(tokens);
                             } catch (Exception e) {
-                                System.err.println("[ChatController] Could not record tokens: " + e.getMessage());
+                                logger.warn("HuggingFace - Could not record tokens", e);
                             }
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("[ChatController] Error extracting usage: " + e.getMessage());
+                    logger.warn("HuggingFace - Error extracting usage", e);
                 }
                 
                 if (stream) {
@@ -349,14 +349,12 @@ public class ChatController {
                             .body((Object)json);
                 }
             } catch (Exception e) {
-                System.err.println("[ChatController] Serialization error: " + e.getMessage());
-                e.printStackTrace(System.err);
+                logger.warn("HuggingFace - serialization error", e);
                 return ResponseEntity.status(500).body((Object)"{\"error\":\"serialization-failed\"}");
             }
         })
         .onErrorResume(e -> {
-            System.err.println("[ChatController] HuggingFace error: " + e.getMessage());
-            e.printStackTrace(System.err);
+            logger.error("HuggingFace error", e);
             String errMsg = e.getMessage() != null ? e.getMessage().replace("\"", "\\\"") : "unknown error";
             return Mono.<ResponseEntity<?>>just(ResponseEntity.status(502)
                     .body((Object)("{\"error\":\"huggingface-failed\",\"message\":\"" + errMsg + "\"}")));
@@ -385,12 +383,12 @@ public class ChatController {
                                 org.opentron.backend.telemetry.TelemetryService ts = ctx.getBean(org.opentron.backend.telemetry.TelemetryService.class);
                                 if (ts != null) ts.addTokens(tokens);
                             } catch (Exception e) {
-                                System.err.println("[ChatController] Could not record tokens: " + e.getMessage());
+                                logger.warn("Ollama - could not record tokens", e);
                             }
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("[ChatController] Error extracting usage: " + e.getMessage());
+                    logger.warn("Ollama - error extracting usage", e);
                 }
                 
                 if (stream) {
@@ -438,7 +436,7 @@ public class ChatController {
                     }
                     
                     sseBuilder.append("data: [DONE]\n\n");
-                    System.out.println("[ChatController] Transformed response to OpenAI streaming format");
+                    logger.debug("Transformed response to OpenAI streaming format");
                     
                     return ResponseEntity.ok()
                             .contentType(MediaType.TEXT_EVENT_STREAM)
@@ -446,20 +444,18 @@ public class ChatController {
                 } else {
                     // Non-streaming: return as-is (already in OpenAI format with message field)
                     String json = objectMapper.writeValueAsString(result);
-                    System.out.println("[ChatController] Returning non-streaming OpenAI format response");
+                    logger.debug("Returning non-streaming OpenAI format response");
                     return ResponseEntity.ok()
                             .contentType(MediaType.APPLICATION_JSON)
                             .body((Object)json);
                 }
             } catch (Exception e) {
-                System.err.println("[ChatController] Serialization error: " + e.getMessage());
-                e.printStackTrace(System.err);
+                logger.warn("Ollama - serialization error", e);
                 return ResponseEntity.status(500).body((Object)"{\"error\":\"serialization-failed\"}");
             }
         })
         .onErrorResume(e -> {
-            System.err.println("[ChatController] Ollama CLI error: " + e.getMessage());
-            e.printStackTrace(System.err);
+            logger.error("Ollama CLI error", e);
             String errMsg = e.getMessage() != null ? e.getMessage().replace("\"", "\\\"") : "unknown error";
             return Mono.<ResponseEntity<?>>just(ResponseEntity.status(502)
                     .body((Object)("{\"error\":\"ollama-cli-failed\",\"message\":\"" + errMsg + "\"}")));
@@ -476,7 +472,7 @@ public class ChatController {
         });
 
         if (stream) {
-            System.out.println("[ChatController] Proxying streaming response from engine");
+            logger.info("Proxying streaming response from engine");
             Flux<DataBuffer> bodyFlux = response.bodyToFlux(DataBuffer.class);
             return Mono.just(
                 ResponseEntity.status(response.statusCode())
@@ -485,7 +481,7 @@ public class ChatController {
                     .body(bodyFlux)
             );
         } else {
-            System.out.println("[ChatController] Proxying non-streaming response from engine");
+            logger.info("Proxying non-streaming response from engine");
             return response.bodyToMono(String.class)
                     .map(bodyText -> {
                         // Extract and record token usage
@@ -503,12 +499,12 @@ public class ChatController {
                                         org.opentron.backend.telemetry.TelemetryService ts = ctx.getBean(org.opentron.backend.telemetry.TelemetryService.class);
                                         if (ts != null) ts.addTokens(tokens);
                                     } catch (Exception e) {
-                                        System.err.println("[ChatController] Could not record tokens: " + e.getMessage());
+                                        logger.warn("Could not record tokens from proxied response", e);
                                     }
                                 }
                             }
                         } catch (Exception e) {
-                            System.err.println("[ChatController] Error parsing response for tokens: " + e.getMessage());
+                            logger.warn("Error parsing proxied response for tokens", e);
                         }
                         return ResponseEntity.status(response.statusCode())
                                 .headers(responseHeaders)
@@ -537,7 +533,7 @@ public class ChatController {
                     return engineRouting.pickFirstAvailableModel()
                             .map(model -> {
                                 if (model != null && !model.isBlank()) {
-                                    System.out.println("[ChatController] requested model '" + requestedModel + "' not found, switching to '" + model + "'");
+                                    logger.info("Requested model '{}' not found, switching to '{}'", requestedModel, model);
                                     Map<String, Object> replaced = new java.util.HashMap<>(payload);
                                     replaced.put("model", model);
                                     return replaced;
@@ -546,7 +542,7 @@ public class ChatController {
                             });
                 })
                 .onErrorResume(e -> {
-                    System.err.println("[ChatController] model resolution error: " + e.getMessage());
+                    logger.error("Model resolution error", e);
                     return Mono.just(payload);
                 });
     }

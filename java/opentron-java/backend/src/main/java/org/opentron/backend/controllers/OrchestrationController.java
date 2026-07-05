@@ -1,6 +1,8 @@
 package org.opentron.backend.controllers;
 
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 import org.opentron.backend.agents.SkillBasedOrchestrator;
 
@@ -11,6 +13,8 @@ import org.opentron.backend.agents.SkillBasedOrchestrator;
 @RestController
 @RequestMapping("/v1/orchestrate")
 public class OrchestrationController {
+
+        private static final Logger logger = LoggerFactory.getLogger(OrchestrationController.class);
 
     private final SkillBasedOrchestrator orchestrator;
 
@@ -51,14 +55,14 @@ public class OrchestrationController {
             @RequestParam String task,
             @RequestParam(required = false, defaultValue = "") String context) {
 
-        System.out.println("[OrchestrationController] 📋 Orchestrating task: " + task);
+        logger.info("Orchestrating task: {}", task);
 
         try {
             Map<String, Object> result = orchestrator.orchestrateTask(task, context);
             result.put("status", "success");
             return result;
         } catch (Exception e) {
-            System.err.println("[OrchestrationController] ❌ Error: " + e.getMessage());
+                        logger.error("Error orchestrating task {}", task, e);
             return Map.of(
                     "status", "error",
                     "error", e.getMessage(),
@@ -79,30 +83,30 @@ public class OrchestrationController {
      *   ]
      * }
      */
-    @PostMapping("/batch")
-    public Map<String, Object> orchestrateBatch(@RequestBody Map<String, List<Map<String, String>>> request) {
-        List<Map<String, String>> tasks = request.get("tasks");
-        List<Map<String, Object>> results = new ArrayList<>();
+        @PostMapping("/batch")
+        public Map<String, Object> orchestrateBatch(@RequestBody org.opentron.backend.dto.OrchestrationBatchRequest request) {
+                List<org.opentron.backend.dto.OrchestrationTaskRequest> tasks = request.getTasks();
+                List<Map<String, Object>> results = new ArrayList<>();
 
-        long start = System.currentTimeMillis();
+                long start = System.currentTimeMillis();
 
-        for (Map<String, String> taskData : tasks) {
-            String task = taskData.get("task");
-            String context = taskData.getOrDefault("context", "");
+                for (org.opentron.backend.dto.OrchestrationTaskRequest taskData : tasks) {
+                        String task = taskData.getTask();
+                        String context = taskData.getContext() == null ? "" : taskData.getContext();
 
-            Map<String, Object> result = orchestrator.orchestrateTask(task, context);
-            results.add(result);
+                        Map<String, Object> result = orchestrator.orchestrateTask(task, context);
+                        results.add(result);
+                }
+
+                long elapsed = System.currentTimeMillis() - start;
+
+                return Map.of(
+                                "status", "completed",
+                                "tasks_processed", tasks.size(),
+                                "results", results,
+                                "total_elapsed_ms", elapsed
+                );
         }
-
-        long elapsed = System.currentTimeMillis() - start;
-
-        return Map.of(
-                "status", "completed",
-                "tasks_processed", tasks.size(),
-                "results", results,
-                "total_elapsed_ms", elapsed
-        );
-    }
 
     /**
      * GET /v1/orchestrate/agents

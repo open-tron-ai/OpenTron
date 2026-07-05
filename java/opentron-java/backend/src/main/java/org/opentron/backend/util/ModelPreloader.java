@@ -1,5 +1,7 @@
 package org.opentron.backend.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import java.net.HttpURLConnection;
@@ -13,6 +15,8 @@ import java.io.OutputStream;
 @Component
 public class ModelPreloader implements CommandLineRunner {
 
+    private static final Logger logger = LoggerFactory.getLogger(ModelPreloader.class);
+
     private static final String MODEL = "mistral";
     private static final String OLLAMA_API = "http://127.0.0.1:11434/api/generate";
 
@@ -24,13 +28,13 @@ public class ModelPreloader implements CommandLineRunner {
                 Thread.sleep(3000); // Wait 3 seconds for Ollama to stabilize
                 warmupModel();
             } catch (Exception e) {
-                System.err.println("[ModelPreloader] Warmup skipped: " + e.getMessage());
+                logger.warn("Warmup skipped", e);
             }
         }).start();
     }
 
     private void warmupModel() {
-        System.out.println("[ModelPreloader] Starting async model warmup...");
+        logger.info("Starting async model warmup...");
         try {
             HttpURLConnection conn = (HttpURLConnection) new URL(OLLAMA_API).openConnection();
             conn.setRequestMethod("POST");
@@ -47,9 +51,9 @@ public class ModelPreloader implements CommandLineRunner {
 
             int code = conn.getResponseCode();
             if (code == 200) {
-                System.out.println("[ModelPreloader] ✅ Model warmup complete - Mistral ready for instant responses");
+                logger.info("Model warmup complete - Mistral ready for instant responses");
             } else {
-                System.err.println("[ModelPreloader] Warmup HTTP " + code);
+                logger.warn("Warmup HTTP {}", code);
             }
             
             // Drain response
@@ -61,7 +65,7 @@ public class ModelPreloader implements CommandLineRunner {
                 }
             }
         } catch (Exception e) {
-            System.err.println("[ModelPreloader] Warmup failed (non-critical): " + e.getMessage());
+            logger.warn("Warmup failed (non-critical)", e);
         }
     }
 }
