@@ -8,173 +8,143 @@
 OpenTron
 Personal AI, On Personal Devices.
 
-OpenTron is a hybrid AI assistant application combining a React/Tauri frontend with a Java Spring Boot backend. The backend proxies chat requests to local inference engines and cloud providers, while the frontend provides a desktop-style AI chat experience plus managed agent, tool, and telemetry interfaces.
+# OpenTron
 
-Architecture
-High-level structure
-frontend
+OpenTron is a desktop-first AI assistant platform that combines a React and Tauri frontend with a Java backend, a Python-based AI toolkit, and optional PostgreSQL-backed storage. The project is aimed at local-first experimentation with chat, agents, telemetry, connectors, and voice workflows.
 
-React 19 + Vite frontend
-Tauri desktop integration
-Local app state with Zustand
-API clients under lib
-UI pages and components under components
-backend
+## What this repository contains
 
-Spring Boot backend
-WebFlux HTTP client via WebClient
-WebSocket support
-Controllers under src/main/java/org/opentron/backend/controllers
-Services and utilities under src/main/java/org/opentron/backend/util
-Data flow
-Frontend sends /v1/* requests to the local Java backend.
-Backend routes chat and model requests to the configured inference engine host.
-Backend may route requests to:
-local Ollama inference
-Hugging Face local/API
-cloud models via CloudModelService
-Backend returns JSON or SSE streams back to the frontend.
-Frontend updates chat UI, agent status, telemetry, memory, traces, and settings.
-Key components
-Backend entrypoint: OpentronBackendApplication.java
-Frontend entrypoint: main.tsx
-Engine routing: EngineRouting.java
-Chat controller: ChatController.java
-Agent coordinator: AgentsController.java
-WebSocket chat: ReactiveChatWebSocketHandler.java
-Model listing: ModelsController.java
-Behavior
-Backend behavior
-The Java backend implements a minimal OpenTron-compatible API:
+- Frontend: a React 19 + Vite + Tauri app for chat, dashboards, agents, settings, and logs
+- Backend: a Spring Boot service that exposes OpenTron-style API routes for chat, models, agents, memory, traces, speech, and telemetry
+- Python package: modular AI primitives, CLI entry points, and supporting tooling under the source tree
+- Infrastructure: Docker, deployment scripts, docs, and helper utilities for local development and testing
 
-/v1/models
+## Core capabilities
 
-Lists available models from the configured engine host.
-/v1/chat/completions
+- Chat interface with model selection and streaming responses
+- Multi-agent coordination and task orchestration
+- Speech and voice-related endpoints and UI hooks
+- Memory, trace, connector, and telemetry surfaces
+- Local inference routing with optional cloud connectors
+- PostgreSQL integration for persistent storage and dashboards
 
-Receives chat payloads.
-Detects cloud models and routes them to cloud provider handlers.
-Supports Hugging Face and Ollama backends.
-Attempts to proxy engine responses to the frontend.
-/v1/recommended-model
+## Repository layout
 
-Returns a model recommendation.
-/v1/info
+- frontend/: React frontend and Tauri desktop integration
+- java/opentron-java/: Java modules, including the backend and CLI
+- src/: Python package and core implementation
+- configs/, deploy/, docs/, scripts/: project configuration, deployment assets, and docs
+- examples/, assets/, tests/: sample data, static assets, and test coverage
 
-Returns server info and diagnostics.
-/v1/telemetry/*
+## Prerequisites
 
-Energy and stats endpoints.
-/v1/memory/*
+For the full stack locally, make sure you have:
 
-Memory store, search, and stats.
-/v1/traces/*
+- Docker
+- Java 21+
+- Maven 3.9+
+- Node.js 20+
+- Python 3.10–3.13 (for the Python tooling)
 
-Trace retrieval.
-/v1/speech/*
+## Quick start
 
-Speech health, transcription, synthesis, and voice listing.
-/v1/jarvis/*
+On Windows, the recommended startup path is:
 
-Jarvis voice health and speak endpoints.
-/v1/managed-agents/*
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-stack.ps1
+```
 
-Demo managed agent CRUD and lifecycle actions.
-/v1/agents/*
+That script will:
 
-Multi-agent coordination and task polling.
-/v1/connectors/*
+1. Start PostgreSQL in Docker
+2. Build the Java backend
+3. Launch the backend in a separate terminal
+4. Launch the frontend/Tauri app in a separate terminal
 
-Connector listing and connect/disconnect stubs.
-/v1/tools/*
+## Manual startup
 
-Tool listing and credential endpoints.
-Backend infrastructure:
+### 1. Start PostgreSQL
 
-WebClient is configured with a connection pool and engine host.
-CORS is enabled for local development and Tauri origins.
-The backend can forward allowed /v1 routes to the engine host using EngineRouting.
-A simple in-memory managed agent store exists for demo/testing.
-Frontend behavior
-The frontend:
+```powershell
+docker run -d --restart always --name opentron-postgres `
+  -e POSTGRES_DB=opentron `
+  -e POSTGRES_USER=opentron `
+  -e POSTGRES_PASSWORD=opentron_secure_password `
+  -p 5432:5432 `
+  -v postgres_data:/var/lib/postgresql/data `
+  postgres:16-alpine
+```
 
-Builds a chat UI with routes for chat, dashboard, agents, settings, and logs.
-Fetches models, server info, savings, and telemetry on mount.
-Uses local storage for settings, conversations, opt-in state, and model selection.
-Supports Tauri-specific behavior when running as a desktop app.
-Uses fetch / apiFetch wrappers to call the backend.
-Supports SSE chat streaming and WebSocket chat streaming.
-Includes features for:
-model selection
-opt-in analytics
-saved conversations
-speech input and voice output
-connector management
-agent coordination and task queueing
-trace/debug exploration
-How to use
-Backend
-Open a terminal in:
+### 2. Start the backend
 
-backend
-Build:
+```powershell
+cd java\opentron-java\backend
+mvn spring-boot:run
+```
 
-mvn package
-Run:
+The backend is expected to run on http://localhost:8000.
 
-java -jar target/opentron-java-backend-0.1.0.jar
-or if the repackaged Spring Boot jar is produced with a classifier:
-java -jar target/opentron-java-backend-0.1.0-exec.jar
-Configuration
+### 3. Start the frontend
 
-Default engine host: http://localhost:11434
-Override with:
--Dengine.host=http://your-engine:port
--Dengine.apiKey=YOUR_KEY
--Dengine.type=ollama|openai|auto
-Frontend
-Open a terminal in:
-
-frontend
-Install dependencies:
-
+```powershell
+cd frontend
 npm install
-Run in development mode:
+npm run tauri dev
+```
 
+If you want to preview the web build instead of the desktop app, use:
+
+```powershell
 npm run dev
-Build for production:
+```
 
+## Build commands
+
+### Frontend
+
+```powershell
+cd frontend
 npm run build
-Build for Tauri:
-
 npm run build:tauri
-Preview production build:
+```
 
-npm run preview
-Run Tauri (desktop):
+### Backend
 
-npm run tauri
-Local development flow
-Start the Java backend first so http://localhost:8000 is available.
-Start the frontend dev server.
-The frontend proxy configuration in vite.config.ts forwards /v1, /health, and /api to the backend.
-Usage
-Launch backend.
-Start frontend or desktop app.
-Open the app in browser or Tauri shell.
-Use the chat page to send messages.
-Visit dashboard and settings for telemetry, model selection, and integrations.
-Use agents and connectors screens to explore multi-agent and external data features.
-Limitations / known gaps
-This repository currently contains a partial implementation:
+```powershell
+cd java\opentron-java
+mvn clean package -DskipTests
+```
 
-The backend implements a subset of frontend API routes.
-Some frontend paths are not yet implemented in the Java backend.
-Because of these mismatches, not all frontend features will work end-to-end until the missing backend endpoints are implemented.
+### Python tooling
 
-Project layout
-frontend — React + Vite + Tauri UI
-backend — Java Spring Boot backend
-pom.xml — backend build config
-package.json — frontend scripts and dependencies
-vite.config.ts — frontend build/proxy configuration
+If you are working on the Python-oriented pieces, the repository includes a Python project definition in pyproject.toml and an accompanying lock file.
+
+## Environment notes
+
+The stack expects a few environment variables for local development, including:
+
+- POSTGRES_URL
+- POSTGRES_USER
+- POSTGRES_PASSWORD
+- ENGINE_HOST
+
+The default engine host is typically set to http://localhost:11434.
+
+## Documentation
+
+Useful references in this repository include:
+
+- QUICK_START.md
+- HOW_TO_START.md
+- BUILD_INSTRUCTIONS.md
+- START_HERE.md
+- docs/
+- various integration notes under the root for PostgreSQL, agents, speech, and deployment
+
+## Status
+
+This repository is actively evolving and includes both completed integrations and work-in-progress areas. Some features may be partially wired up depending on the backend and frontend endpoints currently available.
+
+## License
+
+This project is licensed under the Apache-2.0 license.
