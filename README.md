@@ -16,7 +16,7 @@ OpenTron is a desktop-first AI assistant platform that combines a React and Taur
 
 - Frontend: a React 19 + Vite + Tauri app for chat, dashboards, agents, settings, and logs
 - Backend: a Spring Boot service that exposes OpenTron-style API routes for chat, models, agents, memory, traces, speech, and telemetry
-- Python package: modular AI primitives, CLI entry points, and supporting tooling under the source tree
+- modular AI primitives, CLI entry points, and supporting tooling under the source tree
 - Infrastructure: Docker, deployment scripts, docs, and helper utilities for local development and testing
 
 ## Core capabilities
@@ -32,7 +32,6 @@ OpenTron is a desktop-first AI assistant platform that combines a React and Taur
 
 - frontend/: React frontend and Tauri desktop integration
 - java/opentron-java/: Java modules, including the backend and CLI
-- src/: Python package and core implementation
 - configs/, deploy/, docs/, scripts/: project configuration, deployment assets, and docs
 - examples/, assets/, tests/: sample data, static assets, and test coverage
 
@@ -44,7 +43,6 @@ For the full stack locally, make sure you have:
 - Java 21+
 - Maven 3.9+
 - Node.js 20+
-- Python 3.10–3.13 (for the Python tooling)
 
 ## Quick start
 
@@ -114,10 +112,6 @@ npm run build:tauri
 cd java\opentron-java
 mvn clean package -DskipTests
 ```
-
-### Python tooling
-
-If you are working on the Python-oriented pieces, the repository includes a Python project definition in pyproject.toml and an accompanying lock file.
 
 ## Environment notes
 
