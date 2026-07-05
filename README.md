@@ -10,7 +10,7 @@ Personal AI, On Personal Devices.
 
 # OpenTron
 
-OpenTron is a desktop-first AI assistant platform that combines a React and Tauri frontend with a Java backend, a Python-based AI toolkit, and optional PostgreSQL-backed storage. The project is aimed at local-first experimentation with chat, agents, telemetry, connectors, and voice workflows.
+OpenTron is a desktop-first AI assistant platform that combines a React and Tauri frontend with a Java backend, a CLI AI toolkit, and optional PostgreSQL-backed storage. The project is aimed at local-first experimentation with chat, agents, telemetry, connectors, and voice workflows.
 
 ## What this repository contains
 
