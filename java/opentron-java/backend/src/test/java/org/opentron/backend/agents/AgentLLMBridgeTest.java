@@ -18,7 +18,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class AgentLLMBridgeTest {
+public class AgentLLMBridgeTest {
 
     @Test
     void usesCloudModelServiceForClaudeModels() {
