@@ -146,3 +146,5 @@ The default engine host is typically set to http://localhost:11434.
 ## License
 
 This project is licensed under the Apache-2.0 license.
+
+<meta name="google-site-verification" content="vpoOSKjgVSIF4t9zXrEUFCjl9hixLXEtCcg8iPP_f_0" />
