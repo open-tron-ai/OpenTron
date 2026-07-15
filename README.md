@@ -8,6 +8,17 @@
 OpenTron
 Personal AI, On Personal Devices.
 
+OpenTron: Autonomous Multi-Agent Orchestration
+​OpenTron is a hardened, production-ready multi-agent ecosystem designed for local-first, autonomous engineering workflows. Unlike simple LLM wrappers, OpenTron utilizes a rigorous state-machine architecture to manage complex task decomposition, agent communication, and system-wide resilience.
+​Core Architectural Pillars
+​Contract-Driven Communication: All agent interactions are governed by strict schema-based protocols (JSON/Record-based), eliminating ambiguity and reducing hallucination.
+​Hardened Agent Boundaries: Isolated execution workspaces ensure that agent-driven actions are sandboxed, preventing cascading failures and protecting the codebase.
+​Autonomous Reliability: Built-in circuit breakers and automated retry logic manage agent timeouts and loop errors, ensuring the system remains stable without human intervention.
+​Centralized Observability: Every task is logged within a unified audit trail, providing full transparency into the decision-making process of the agents.
+​Continuous Gatekeeping: Integrated automated regression testing acts as the final gatekeeper, ensuring that any code generated or refactored by the agents meets production standards before commit.
+​Why OpenTron?
+​Most multi-agent systems are designed for prototyping. OpenTron is designed for operation. It bridges the gap between an AI assistant and an autonomous engineering team by providing the guardrails necessary to manage complex, multi-step engineering tasks in a "local-first" environment.
+
 # OpenTron
 
 OpenTron is a desktop-first AI assistant platform that combines a React and Tauri frontend with a Java backend, a CLI AI toolkit, and optional PostgreSQL-backed storage. The project is aimed at local-first experimentation with chat, agents, telemetry, connectors, and voice workflows.
