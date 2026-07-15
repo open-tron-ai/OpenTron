@@ -143,21 +143,6 @@ The stack expects a few environment variables for local development, including:
 
 The default engine host is typically set to http://localhost:11434.
 
-## Documentation
-
-Useful references in this repository include:
-
-- QUICK_START.md
-- HOW_TO_START.md
-- BUILD_INSTRUCTIONS.md
-- START_HERE.md
-- docs/
-- various integration notes under the root for PostgreSQL, agents, speech, and deployment
-
-## Status
-
-This repository is actively evolving and includes both completed integrations and work-in-progress areas. Some features may be partially wired up depending on the backend and frontend endpoints currently available.
-
 ## License
 
 This project is licensed under the Apache-2.0 license.
