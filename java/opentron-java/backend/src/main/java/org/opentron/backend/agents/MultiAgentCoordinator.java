@@ -228,6 +228,32 @@ public class MultiAgentCoordinator {
             return List.of();
         }
 
+        /**
+         * Handle empty responses from LLM - not an error, just no relevant task
+         * Sets a default fallback message when response is empty
+         */
+        protected Map<String, Object> handleEmptyResponse(Map<String, Object> result, String agentName) {
+            if (result == null) {
+                return result;
+            }
+            
+            String response = result.getOrDefault("response", "").toString().trim();
+            if (response.isEmpty()) {
+                String defaultMessage = String.format("No relevant %s tasks identified for this request.", agentName);
+                result.put("response", defaultMessage);
+                
+                Logger log = LoggerFactory.getLogger(this.getClass());
+                long tokensUsed = 0;
+                Object tokensObj = result.get("tokens_used");
+                if (tokensObj instanceof Number) {
+                    tokensUsed = ((Number) tokensObj).longValue();
+                }
+                log.debug("{} agent: empty response handled - {} tokens used", agentName, tokensUsed);
+            }
+            
+            return result;
+        }
+
         protected Map<String, Object> invokeScopedLLM(String role, String task, String context, List<String> focus, List<String> ignore, List<String> constraints, String agentKey, StreamingCoordinatorCallback callback) {
             String systemPrompt = "You are a " + role + ". Solve only the relevant domain. "
                     + "Stay concise and use the provided context. "
@@ -556,7 +582,8 @@ public class MultiAgentCoordinator {
 
             Map<String, Object> result = invokeScopedLLM("backend optimization expert", task, context, focus, ignore, constraints, "backend", msg.streamCallback);
             this.lastExecutedTime = System.currentTimeMillis() - start;
-            return result;
+            
+            return handleEmptyResponse(result, "Backend");
         }
     }
 
@@ -589,7 +616,8 @@ public class MultiAgentCoordinator {
 
             Map<String, Object> result = invokeScopedLLM("frontend React expert", task, context, focus, ignore, constraints, "frontend", msg.streamCallback);
             this.lastExecutedTime = System.currentTimeMillis() - start;
-            return result;
+            
+            return handleEmptyResponse(result, "Frontend");
         }
     }
 
@@ -622,7 +650,8 @@ public class MultiAgentCoordinator {
 
             Map<String, Object> result = invokeScopedLLM("DevOps monitoring expert", task, context, focus, ignore, constraints, "devops", msg.streamCallback);
             this.lastExecutedTime = System.currentTimeMillis() - start;
-            return result;
+            
+            return handleEmptyResponse(result, "DevOps");
         }
     }
 
@@ -655,7 +684,8 @@ public class MultiAgentCoordinator {
 
             Map<String, Object> result = invokeScopedLLM("QA testing expert", task, context, focus, ignore, constraints, "qa", msg.streamCallback);
             this.lastExecutedTime = System.currentTimeMillis() - start;
-            return result;
+            
+            return handleEmptyResponse(result, "QA");
         }
     }
 
