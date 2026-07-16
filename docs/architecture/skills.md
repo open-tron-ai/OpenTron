@@ -7,6 +7,8 @@ description: Technical deep-dive into the skills system design, components, and 
 
 Skills are a **cross-cutting orchestration layer** that sits across the five existing primitives (Intelligence, Engine, Agents, Memory/Tools, Learning). They connect tools, agents, memory, and learning into reusable workflows without replacing or subsumming any primitive.
 
+The current implementation is organized around a `SkillManager` that discovers skills from disk, wraps them as tools, and injects them into the agent runtime through the regular tool pipeline.
+
 ## System Design
 
 ```
@@ -59,7 +61,7 @@ class SkillManifest:
 
 ### SkillManager (`skills/manager.py`)
 
-The central coordinator. Created by `SystemBuilder.build()` during system composition.
+The central coordinator. Created during system composition and responsible for discovering skills, validating dependencies, and exposing them to agents as tool-like components.
 
 **Lifecycle:**
 1. `discover(paths)` — scans skill directories in precedence order, loads manifests, validates the dependency graph, applies optimization overlays
@@ -69,7 +71,7 @@ The central coordinator. Created by `SystemBuilder.build()` during system compos
 
 ### SkillTool (`skills/tool_adapter.py`)
 
-Adapter that makes any skill look like a regular `BaseTool` to agents:
+Adapter that makes any skill look like a regular `BaseTool` to agents, allowing skills to participate in the same execution and trace flow as ordinary tools:
 
 - `spec` property derives `ToolSpec` from the manifest — auto-extracts input parameters from step argument templates
 - `execute(**params)` runs the pipeline (if steps exist), returns markdown content (if SKILL.md exists), or both

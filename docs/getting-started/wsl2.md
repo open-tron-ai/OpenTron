@@ -31,5 +31,5 @@ About 3 minutes. Type `Tron` to start.
 
 ## See also
 
-- [Full installer reference](install.md)
+- [Full installer reference](installation.md)
 

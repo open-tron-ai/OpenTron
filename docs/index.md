@@ -34,6 +34,18 @@ Personal AI agents are exploding in popularity, but nearly all of them still rou
 
 OpenTron is that stack. It is a framework for local-first personal AI, built around three core ideas: shared primitives for building on-device agents; evaluations that treat energy, FLOPs, latency, and dollar cost as first-class constraints alongside accuracy; and a learning loop that improves models using local trace data. The goal is simple: make it possible to build personal AI agents that run locally by default, calling the cloud only when truly necessary. OpenTron aims to be both a research platform and a production foundation for local AI, in the spirit of PyTorch.
 
+## Current implementation status
+
+The current implementation already ships the foundational pieces for a working local-first workflow:
+
+- browser and desktop entry points for chatting with local models
+- a CLI and Python SDK for direct programmatic use
+- multiple inference backends and hardware-aware routing
+- scheduling, memory, tools, telemetry, and evaluation primitives
+- a Pearl mining workflow for NVIDIA Hopper hosts, plus experimental Apple Silicon and CPU providers
+
+The docs in this repository now reflect that mix of stable, experimental, and in-progress functionality.
+
 ---
 
 ## Get Started

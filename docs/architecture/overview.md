@@ -7,7 +7,7 @@ search:
 
 # Architecture Overview
 
-OpenTron is a research framework for studying on-device AI systems. Its architecture is organized around **five core abstractions** -- Intelligence, Engine, Agentic Logic, Memory, and Learning -- that work together through trace-driven feedback.
+OpenTron is a research framework for studying on-device AI systems. Its architecture is organized around **five core abstractions** -- Intelligence, Engine, Agentic Logic, Memory, and Learning -- that work together through trace-driven feedback and runtime registries.
 
 ![OpenTron Architecture](../assets/OpenTron_Architecture.png)
 
@@ -29,7 +29,7 @@ Each engine is configured via its own sub-section in `config.toml` (e.g., `[engi
 
 ### Agentic Logic
 
-The Agentic Logic primitive implements **pluggable agents** that handle queries with varying levels of sophistication. The agent hierarchy is organized around `BaseAgent` (ABC with concrete helpers) and `ToolUsingAgent` (intermediate base for agents that accept tools, with `accepts_tools = True`). Nine agent types are available: `SimpleAgent` (single-turn, no tools), `OrchestratorAgent` (multi-turn tool-calling loop with function_calling and structured modes), `NativeReActAgent` (Thought-Action-Observation loop), `NativeOpenHandsAgent` (CodeAct-style code execution), `RLMAgent` (recursive LM with persistent REPL), `OpenHandsAgent` (wraps real `openhands-sdk`), `ClaudeCodeAgent` (Claude Agent SDK via Node.js subprocess), `OperativeAgent` (persistent scheduled agent with state management), and `MonitorOperativeAgent` (long-horizon agent with configurable strategy axes).
+The Agentic Logic primitive implements **pluggable agents** that handle queries with varying levels of sophistication. The agent hierarchy is organized around `BaseAgent` (ABC with concrete helpers) and `ToolUsingAgent` (intermediate base for agents that accept tools, with `accepts_tools = True`). The current implementation includes several concrete agent types such as `SimpleAgent`, `OrchestratorAgent`, `NativeReActAgent`, `NativeOpenHandsAgent`, `RLMAgent`, `OpenHandsAgent`, `ClaudeCodeAgent`, `OperativeAgent`, and `MonitorOperativeAgent`, along with sandboxed wrappers for isolated execution.
 
 The sandbox module (`OpenTron.sandbox`) adds a `SandboxedAgent` wrapper that runs any `BaseAgent` inside a Docker or Podman container with mount-security enforcement, and a `ContainerRunner` that manages the container lifecycle.
 
@@ -37,13 +37,13 @@ Agent behavior is configured through `[agent]` in `config.toml`, including the d
 
 ### Memory
 
-The Memory primitive provides **persistent, searchable storage** for documents and knowledge. Five backends are available: SQLite/FTS5 (zero-dependency default), FAISS (dense vector retrieval), ColBERTv2 (late interaction), BM25 (classic term-frequency), and Hybrid (Reciprocal Rank Fusion of sparse + dense). Storage backends are configured under `[tools.storage]` in `config.toml` (the `[memory]` section is still accepted as a backward-compatible alias).
+The Memory primitive provides **persistent, searchable storage** for documents and knowledge. The current implementation supports SQLite/FTS5 as the default backend, plus FAISS, ColBERTv2, BM25, and Hybrid retrieval backends. Storage backends are configured under `[tools.storage]` in `config.toml` (the `[memory]` section remains accepted as a backward-compatible alias).
 
 The memory pipeline includes document ingestion, chunking, embedding generation, and context injection. When a user sends a query and `agent.context_from_memory` is enabled, relevant documents are retrieved and prepended to the prompt with source attribution.
 
 ### Learning & Traces
 
-The Learning system is the fifth primitive, connecting the other four through **trace-driven feedback**. Every agent interaction can produce a `Trace` capturing the full sequence of steps — routing decisions, memory retrieval, inference calls, tool invocations, and final responses. The `TraceAnalyzer` computes statistics from accumulated traces, and the `TraceDrivenPolicy` uses these statistics to learn which model/agent/tool combinations produce the best outcomes for different query types.
+The Learning system is the fifth primitive, connecting the other four through **trace-driven feedback**. Every agent interaction can produce a `Trace` capturing the full sequence of steps — routing decisions, memory retrieval, inference calls, tool invocations, and final responses. The runtime includes trace collection, trace analysis, routing-policy hooks, and support for learning-based or heuristic routing strategies, with LLM-guided spec search available as an advanced loop for harness improvement.
 
 The learning system is configured through nested sub-sections in `config.toml`: `[learning.routing]` controls the router policy (heuristic, learned, sft, grpo), `[learning.intelligence]` controls the model-level learning policy, `[learning.agent]` controls agent advisor and ICL updater policies, and `[learning.metrics]` sets the composite reward function weights. The pillar also includes LLM-guided spec search, a frontier-driven loop that improves the local harness — see [Learning architecture: LLM-guided spec search](learning.md#llm-guided-spec-search-frontier-driven-harness-learning).
 

@@ -9,6 +9,8 @@ search:
 
 OpenTron runs entirely on your hardware. Choose the interface that fits your workflow.
 
+The current implementation is suitable for the browser app, desktop app, CLI, and Python SDK. The recommended first step is usually the quickstart flow for your platform, while the sections below cover the manual installation path and the supported optional extras.
+
 ---
 
 ## Browser App

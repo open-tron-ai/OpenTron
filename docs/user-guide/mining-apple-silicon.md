@@ -1,10 +1,10 @@
 ﻿# Mining Pearl on Apple Silicon (and other CPU hosts)
 
 OpenTron can mine the [Pearl](https://github.com/pearl-research-labs/pearl) chain
-on Apple Silicon Macs (M1/M2/M3/M4) using the `cpu-pearl` provider. **This is
-v1**: decoupled CPU mining. Your existing local LLM workflow (Ollama, MLX-LM,
-llama.cpp, vLLM) is untouched; mining runs in the background as a separate
-process.
+on Apple Silicon Macs (M1/M2/M3/M4) using the `cpu-pearl` provider. This is
+currently the decoupled CPU path in the implementation: your existing local LLM
+workflow (Ollama, MLX-LM, llama.cpp, vLLM) is untouched, and mining runs in
+the background as a separate process.
 
 ## Honest expectations
 

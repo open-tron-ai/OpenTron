@@ -1,4 +1,16 @@
-﻿# Roadmap
+﻿# Roadmap and implementation status
+
+## Current implementation status
+
+The core OpenTron stack is already implemented and documented for local-first use. The current codebase includes:
+
+- a local-first CLI and Python SDK for chat, tool use, memory, and scheduling
+- browser and desktop entry points backed by the same local backend
+- multiple inference backends, including Ollama, vLLM, SGLang, llama.cpp, and cloud providers
+- operator-style agents, telemetry, and evaluation hooks that are already wired into the runtime
+- a working Pearl mining flow for NVIDIA Hopper hosts via `Tron mine`, plus experimental Apple Silicon and CPU providers
+
+The roadmap below therefore focuses on hardening, performance, and ecosystem growth rather than bootstrapping the basic platform.
 
 ## Current Focus Areas
 

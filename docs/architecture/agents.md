@@ -2,6 +2,8 @@
 
 The Agentic Logic primitive provides **pluggable agents** that handle queries with varying levels of sophistication -- from simple single-turn responses to multi-turn tool-calling loops, ReAct-style reasoning, CodeAct code execution, recursive decomposition, and external agent communication.
 
+The current implementation is centered on the `BaseAgent` abstraction and the `AgentRegistry`, which makes individual agent implementations discoverable at runtime without changing the consuming code.
+
 ---
 
 ## BaseAgent ABC

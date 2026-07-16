@@ -19,19 +19,21 @@ The current public support set is:
 | Raw model | Pearl model | Status |
 |---|---|---|
 | `meta-llama/Llama-3.3-70B-Instruct` | `pearl-ai/Llama-3.3-70B-Instruct-pearl` | Validated default |
-| `google/gemma-4-31B-it` | `pearl-ai/Gemma-4-31B-it-pearl` | Planned until H100/H200 validation passes |
-| `meta-llama/Llama-3.1-8B-Instruct` | `pearl-ai/Llama-3.1-8B-Instruct-pearl` | Planned until H100/H200 validation passes |
+| `google/gemma-4-31B-it` | `pearl-ai/Gemma-4-31B-it-pearl` | Public validation candidate; not yet promoted to default |
+| `meta-llama/Llama-3.1-8B-Instruct` | `pearl-ai/Llama-3.1-8B-Instruct-pearl` | Public validation candidate; not yet promoted to default |
 
 ## Current Validation Findings
 
-The H100 smoke run validated the default Llama Pearl model end to end through
+The current implementation has a validated default path for the Llama Pearl
+model on NVIDIA H100/H200 hosts. That path is exercised end to end through
 `Tron mine start`, vLLM `/v1/models`, OpenTron inference routing, Pearl
 gateway template refresh, and `Tron mine validate-model`.
 
 `pearl-ai/Gemma-4-31B-it-pearl` and
-`pearl-ai/Llama-3.1-8B-Instruct-pearl` are listed because they are public Pearl
-org artifacts. They remain `planned` in OpenTron until we have clean
-H100/H200 validation artifacts for the published repos.
+`pearl-ai/Llama-3.1-8B-Instruct-pearl` remain visible as public validation
+candidates. They are not promoted to the default supported set until the
+relevant H100/H200 validation artifacts are recorded and attached to the model
+enablement flow.
 
 ## Enablement Checklist
 

@@ -1,10 +1,9 @@
 ﻿# Pearl Mining
 
 OpenTron can mine the Pearl Proof-of-Useful-Work chain through local LLM
-inference. The primary v1 path supports NVIDIA H100/H200 hosts running vLLM
-with Pearl's Docker miner. The consolidated Pearl integration also includes
-experimental Apple Silicon and CPU providers through the same `MiningProvider`
-registry.
+inference. The current implementation includes a validated NVIDIA H100/H200
+path using vLLM with Pearl's Docker miner, plus experimental Apple Silicon and
+CPU providers exposed through the same `MiningProvider` registry.
 
 ## Prerequisites
 
@@ -109,18 +108,19 @@ Tron mine validate-model \
 Attach the JSON artifact to the validation issue when promoting additional
 models.
 
-## v1 Scope
+## Current scope
 
-v1 is solo mining only. OpenTron does not take fees, custody funds, generate
-wallet keys, run pools, or operate `pearld`. Users provide their own Pearl node
-and payout address.
+The current implementation is focused on solo mining. OpenTron does not take
+fees, custody funds, generate wallet keys, run pools, or operate `pearld`.
+Users provide their own Pearl node and payout address.
 
-Unsupported in this PR:
+Current limitations:
 
-- Pool mining and the future 20% OpenTron fee model
-- AMD GPU mining and non-Pearl backends
-- RTX 4090 or other non-Hopper NVIDIA GPUs
-- Wallet generation or transaction signing inside OpenTron
+- pool mining and an OpenTron fee layer are not part of the current implementation
+- AMD GPU mining and non-Pearl backends are not part of the validated path
+- RTX 4090 and other non-Hopper NVIDIA GPUs are not covered by the default
+  validation flow
+- wallet generation or transaction signing inside OpenTron is not implemented
 
 ## Troubleshooting
 
