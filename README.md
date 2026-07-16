@@ -249,12 +249,8 @@ ENGINE_HOST=http://localhost:11434
 
 Comprehensive documentation is available in the repository:
 
-- **README_VIRTUAL_THREADS_H2.md** - Overview and quick reference
-- **VIRTUAL_THREADS_H2_SETUP.md** - Detailed setup guide with troubleshooting
 - **DEPLOYMENT_GUIDE.md** - Production deployment scenarios and scaling
 - **QUICK_COMMANDS.sh** - Build, run, and debugging commands
-- **IMPLEMENTATION_SUMMARY.md** - What was implemented and next steps
-- **VERIFICATION_CHECKLIST.md** - Implementation verification details
 
 ## Feature Comparison
 
