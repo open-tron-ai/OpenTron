@@ -786,14 +786,12 @@ export function SettingsPage() {
           <Section title="About">
             <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
               <p className="mb-2">
-                <span className="font-semibold" style={{ color: 'var(--color-text)' }}>OpenTron</span> â€” Programming abstractions for on-device AI.
+                <span className="font-semibold" style={{ color: 'var(--color-text)' }}>OpenTron</span> A resilient, production-ready multi-agent orchestrator for autonomous engineering workflows. Features contract-driven communication and built-in regression testing.
               </p>
-              <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
-                Part of Intelligence Per Watt, a research initiative at Stanford SAIL.
-              </p>
+              
               <div className="flex gap-3 mt-3 text-xs">
                 <a
-                  href="https://scalingintelligence.stanford.edu/blogs/OpenTron/"
+                  href="https://github.com/rciorica/OpenTron/"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: 'var(--color-accent)' }}
@@ -801,7 +799,7 @@ export function SettingsPage() {
                   Project site
                 </a>
                 <a
-                  href="https://open-Tron.github.io/OpenTron/"
+                  href="https://rciorica.github.io/OpenTron/"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: 'var(--color-accent)' }}
