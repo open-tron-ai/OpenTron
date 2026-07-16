@@ -770,7 +770,7 @@ async function handleApiError(res: Response, action: string): Promise<never> {
 export async function coordinateAgents(
   request: string,
   context?: string,
-  onEvent?: (event: { type: string; agent?: string; message?: string; preview?: string; error?: string; result?: any; elapsed_ms?: number }) => void
+  onEvent?: (event: { type: string; agent?: string; message?: string; preview?: string; error?: string; result?: any; elapsed_ms?: number; chunk?: string }) => void
 ): Promise<any> {
   try {
     const res = await apiFetch(`/v1/agents/coordinate`, {

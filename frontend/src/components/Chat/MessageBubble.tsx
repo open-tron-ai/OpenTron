@@ -9,6 +9,7 @@ import { Copy, Check } from 'lucide-react';
 import { AudioPlayer } from './AudioPlayer';
 import { ToolCallCard } from './ToolCallCard';
 import { ResearchTimeline } from './ResearchTimeline';
+import { AgentResponseCard } from './AgentResponseCard';
 import { rehypeCitations } from '../../lib/rehype-citations';
 import { XRayFooter } from './XRayFooter';
 import type { ChatMessage } from '../../types';
@@ -123,6 +124,30 @@ export function MessageBubble({ message, isLive = false }: Props) {
   }
 
   const cleanContent = useMemo(() => stripThinkTags(message.content), [message.content]);
+  
+  // Check if this is an Analysis Results message
+  const isAnalysisResults = cleanContent?.startsWith('## 🎯 Analysis Results');
+
+  // Check if this is an agent response message (thinking or completed)
+  const isAgentResponse = useMemo(() => {
+    const content = cleanContent || '';
+    // Agent messages start with emoji + agent name
+    return /^[🤔💭✓❌]\s+\w+\s+(?:Agent|agent)/.test(content);
+  }, [cleanContent]);
+  // Detect grouped agent sections formatted as:
+  // **AgentName Agent:**\n<content>\n\n**Other Agent Agent:**\n<content>
+  const agentSections = useMemo(() => {
+    const text = cleanContent || '';
+    const regex = /\*\*([^*]+?) Agent:\*\*\s*\n?([\s\S]*?)(?=(\n\n\*\*[^*]+? Agent:\*\*|$))/g;
+    const parts: { name: string; text: string }[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(text)) !== null) {
+      const name = (m[1] || '').trim();
+      const txt = (m[2] || '').trim();
+      if (name) parts.push({ name, text: txt });
+    }
+    return parts.length > 0 ? parts : null;
+  }, [cleanContent]);
 
   // Build a ref→source lookup once per render. Memoized so the rehype plugin
   // identity stays stable until the source list actually changes.
@@ -163,19 +188,57 @@ export function MessageBubble({ message, isLive = false }: Props) {
       {/* Audio player (e.g. morning digest) */}
       {message.audio?.url && <AudioPlayer src={message.audio.url} />}
 
-      {/* Assistant message */}
-      {cleanContent && (
-        <div className="prose max-w-none">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={rehypePlugins}
-            components={{
-              pre: CodeBlockPre,
-            }}
-          >
-            {cleanContent}
-          </ReactMarkdown>
+      {/* Agent response card (thinking or completed) */}
+      {isAgentResponse && <AgentResponseCard message={{ ...message, content: cleanContent }} />}
+
+      {/* Assistant message or grouped agent cards */}
+      {!isAgentResponse && agentSections ? (
+        <div className="flex flex-col gap-3">
+          {agentSections.map((sec, index) => (
+            <div key={`${sec.name}-${index}`} className="rounded-lg p-3 border" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-secondary)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <div style={{ fontSize: '12px', fontWeight: 600 }}>{sec.name} Agent</div>
+              </div>
+              <div className="prose max-w-none">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={rehypePlugins}
+                  components={{ pre: CodeBlockPre }}
+                >
+                  {sec.text}
+                </ReactMarkdown>
+              </div>
+            </div>
+          ))}
         </div>
+      ) : !isAgentResponse && isAnalysisResults ? (
+        <div className="rounded-lg p-4 border-2" style={{ borderColor: 'var(--color-accent, #10b981)', background: 'var(--color-bg-secondary)' }}>
+          <div className="prose max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={rehypePlugins}
+              components={{
+                pre: CodeBlockPre,
+              }}
+            >
+              {cleanContent}
+            </ReactMarkdown>
+          </div>
+        </div>
+      ) : (
+        !isAgentResponse && cleanContent && (
+          <div className="prose max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={rehypePlugins}
+              components={{
+                pre: CodeBlockPre,
+              }}
+            >
+              {cleanContent}
+            </ReactMarkdown>
+          </div>
+        )
       )}
 
       {/* Footer: copy + x-ray */}

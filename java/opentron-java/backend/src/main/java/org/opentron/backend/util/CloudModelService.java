@@ -651,6 +651,11 @@ public class CloudModelService {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    // Streaming helper methods were removed to keep the backend behaviour
+    // strictly non-streaming and avoid emitting partial chunks. If you
+    // want to reintroduce provider streaming later, re-implement these
+    // methods with careful sanitization and structured chunk events.
+
     /**
      * Call OpenRouter API (OpenAI-compatible)
      */

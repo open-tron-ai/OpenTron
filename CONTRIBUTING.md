@@ -12,12 +12,6 @@ Contributing to OpenTron isn't just about code — it's about building the futur
 
 All contributors with merged pull requests will be acknowledged as contributors on the OpenTron paper release.
 
-### Mac Mini Giveaway
-
-We're giving away a Mac Mini to one lucky contributor! Install OpenTron on your personal machine and opt in via the desktop app to share anonymized savings data (FLOPs, dollar cost, energy) for a chance to win. Your data is fully anonymous — no IP, no hardware info beyond savings metrics. You must share your email via the desktop app to be eligible.
-
-See the [Savings Leaderboard](https://open-Tron.github.io/OpenTron/leaderboard/) for details.
-
 ### Path to Maintainership
 
 Consistent contributors can grow into project maintainers:

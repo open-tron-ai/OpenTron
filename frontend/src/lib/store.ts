@@ -80,6 +80,7 @@ interface Settings {
   temperature: number;
   maxTokens: number;
   speechEnabled: boolean;
+  streamingEnabled: boolean;
 }
 
 function loadSettings(): Settings {
@@ -93,6 +94,7 @@ function loadSettings(): Settings {
     temperature: 0.7,
     maxTokens: 4096,
     speechEnabled: true,
+    streamingEnabled: false,
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
@@ -168,6 +170,12 @@ interface AppState {
     audio?: { url: string },
     researchTraces?: ResearchSearchTrace[],
     researchSources?: ResearchSource[],
+  ) => void;
+  updateMessage: (
+    conversationId: string,
+    messageId: string,
+    content: string,
+    telemetry?: MessageTelemetry,
   ) => void;
   setStreamState: (state: Partial<StreamState>) => void;
   resetStream: () => void;
@@ -423,6 +431,25 @@ export const useAppStore = create<AppState>((set, get) => {
         if (audio) lastMsg.audio = audio;
         if (researchTraces) lastMsg.researchTraces = researchTraces;
         if (researchSources) lastMsg.researchSources = researchSources;
+        conv.updatedAt = Date.now();
+        saveConversations(store);
+        set({ messages: [...conv.messages] });
+      }
+    },
+
+    updateMessage: (
+      conversationId: string,
+      messageId: string,
+      content: string,
+      telemetry?: MessageTelemetry,
+    ) => {
+      const store = loadConversations();
+      const conv = store.conversations[conversationId];
+      if (!conv) return;
+      const msg = conv.messages.find((m) => m.id === messageId);
+      if (msg && msg.role === 'assistant') {
+        msg.content = content;
+        if (telemetry) msg.telemetry = telemetry;
         conv.updatedAt = Date.now();
         saveConversations(store);
         set({ messages: [...conv.messages] });

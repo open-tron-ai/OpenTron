@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * AgentLLMBridge - Single clean call to Ollama, no retries, no timeouts.
@@ -62,7 +63,6 @@ public class AgentLLMBridge {
                 return errorResponse("Empty choices in Ollama response");
             }
 
-            @SuppressWarnings("unchecked")
             Map<String, Object> choice = choices.get(0);
             @SuppressWarnings("unchecked")
             Map<String, Object> message = (Map<String, Object>) choice.get("message");
@@ -77,6 +77,25 @@ public class AgentLLMBridge {
 
         } catch (Exception e) {
             logger.error("Error querying LLM", e);
+            return errorResponse("LLM unavailable: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Stream-aware variant: invokes the underlying Ollama service in streaming
+     * mode and calls `onChunk` for each partial chunk. Blocks until complete
+     * and returns a final structured response map.
+     */
+    public Map<String, Object> queryLLMStream(String systemPrompt, String userQuestion, int maxTokens, Consumer<String> onChunk) {
+        // Streaming is currently disabled / reverted. Use the non-streaming
+        // queryLLM path and return a single final response. This keeps the
+        // coordinator and frontend behavior simple and avoids partial
+        // chunking bugs until we reintroduce a robust streaming UX.
+        try {
+            logger.info("Streaming disabled - using non-streaming path for {}", model);
+            return queryLLM(systemPrompt, userQuestion, maxTokens);
+        } catch (Exception e) {
+            logger.error("Error querying LLM (stream fallback)", e);
             return errorResponse("LLM unavailable: " + e.getMessage());
         }
     }

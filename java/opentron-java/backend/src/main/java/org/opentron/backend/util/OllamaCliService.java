@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+// streaming helpers removed; no Consumer import needed
 
 /**
  * OllamaCliService: Call Ollama via HTTP API for local models only.
@@ -47,11 +48,25 @@ public class OllamaCliService {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("model", requestedModel);
         payload.put("prompt", promptStr);
+
+        // Default sampling/generation settings
         payload.put("stream", false);
         payload.put("temperature", 0.7);
         payload.put("top_k", 40);
         payload.put("top_p", 0.9);
         payload.put("num_predict", 512);
+
+        // Model-specific tuning: qwen3.5:9b has been observed to be significantly
+        // slower on some hosts. Reduce generation size and narrow sampling for it
+        // to improve latency for interactive use. Consider quantized variants
+        // or GPU-backed inference for better throughput.
+        if (requestedModel != null && requestedModel.toLowerCase().contains("qwen3.5")) {
+            logger.info("Applying qwen3.5-specific tuning to reduce latency");
+            payload.put("num_predict", 128);
+            payload.put("temperature", 0.2);
+            payload.put("top_k", 20);
+            payload.put("top_p", 0.85);
+        }
 
         String jsonPayload = objectMapper.writeValueAsString(payload);
 
@@ -141,6 +156,10 @@ public class OllamaCliService {
             return callOllama(requestedModel, prompt.toString().trim());
         }).subscribeOn(Schedulers.boundedElastic());
     }
+
+    // Streaming helper removed. Use the non-streaming `chatCompletion` method
+    // for all Ollama interactions. If streaming is reintroduced later,
+    // re-add a carefully tested `chatCompletionStream` implementation.
 
     @SuppressWarnings("unchecked")
     public Mono<List<String>> listModels() {

@@ -56,7 +56,6 @@ public class ScreenshotAnalyzer {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
                 if (choices != null && !choices.isEmpty()) {
-                    @SuppressWarnings("unchecked")
                     Map<String, Object> choice = choices.get(0);
                     @SuppressWarnings("unchecked")
                     Map<String, Object> msg = (Map<String, Object>) choice.get("message");

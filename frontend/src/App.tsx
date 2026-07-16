@@ -29,6 +29,9 @@ import { useGlobalShortcuts } from './hooks/useGlobalShortcuts';
 export default function App() {
   // For Tauri, always start with setupDone=true to show chat immediately
   const [setupDone, setSetupDone] = useState(true);
+  const [startupPageSeen, setStartupPageSeen] = useState(
+    !!localStorage.getItem('OpenTron-startup-page-seen')
+  );
   const handleSetupReady = useCallback(() => {
     setSetupDone(true);
     // Only fire once per install — guard against setup screen re-appearing
@@ -37,6 +40,10 @@ export default function App() {
       localStorage.setItem('OpenTron-setup-completed', '1');
       track('setup_completed', { preset: 'default' });
     }
+  }, []);
+  const handleStartupPageDismissed = useCallback(() => {
+    setStartupPageSeen(true);
+    localStorage.setItem('OpenTron-startup-page-seen', '1');
   }, []);
   const setModels = useAppStore((s) => s.setModels);
   const setModelsLoading = useAppStore((s) => s.setModelsLoading);
@@ -90,10 +97,10 @@ export default function App() {
       <UpdateChecker />
       <Routes>
         <Route element={<Layout />}>
-          <Route index element={<ChatPage />} />
+          <Route index element={startupPageSeen ? <ChatPage /> : <GetStartedPage onDismiss={handleStartupPageDismissed} />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="settings" element={<SettingsPage />} />
-          <Route path="get-started" element={<GetStartedPage />} />
+          <Route path="get-started" element={<GetStartedPage onDismiss={handleStartupPageDismissed} />} />
           <Route path="data-sources" element={<DataSourcesPage />} />
           <Route path="agents" element={<AgentsPage />} />
           <Route path="logs" element={<LogsPage />} />

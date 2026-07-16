@@ -43,6 +43,7 @@ public class SavingsController {
         payload.put("total_prompt_tokens", totalPromptTokens);
         payload.put("total_completion_tokens", totalCompletionTokens);
         payload.put("total_tokens", totalTokens);
+        payload.put("total_energy_j", totalEnergyJ);
         payload.put("local_cost", localCost);
         
         // Per-provider comparison data (dynamic based on total tokens)

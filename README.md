@@ -5,9 +5,6 @@
 
 ---
 
-OpenTron
-Personal AI, On Personal Devices.
-
 OpenTron: Autonomous Multi-Agent Orchestration
 
 ​OpenTron is a hardened, production-ready multi-agent ecosystem designed for local-first, autonomous engineering workflows. Unlike simple LLM wrappers, OpenTron utilizes a rigorous state-machine architecture to manage complex task decomposition, agent communication, and system-wide resilience.
@@ -29,34 +26,42 @@ OpenTron: Autonomous Multi-Agent Orchestration
 
 # OpenTron
 
-OpenTron is a desktop-first AI assistant platform that combines a React and Tauri frontend with a Java backend, a CLI AI toolkit, and optional PostgreSQL-backed storage. The project is aimed at local-first experimentation with chat, agents, telemetry, connectors, and voice workflows.
+OpenTron is a desktop-first AI platform for local-first experimentation and assisted engineering. The current repository combines a React/Vite/Tauri frontend, a Java/Spring Boot backend, a CLI module, and supporting infrastructure for PostgreSQL, Docker, and deployment.
 
-## What this repository contains
+## Current implementation status
 
-- Frontend: a React 19 + Vite + Tauri app for chat, dashboards, agents, settings, and logs
-- Backend: a Spring Boot service that exposes OpenTron-style API routes for chat, models, agents, memory, traces, speech, and telemetry
-- modular AI primitives, CLI entry points, and supporting tooling under the source tree
-- Infrastructure: Docker, deployment scripts, docs, and helper utilities for local development and testing
+The repository currently contains a working local-stack implementation with the core pieces already wired together:
 
-## Core capabilities
+- Frontend: a React 19 + Vite application with a Tauri desktop shell, chat experience, dashboard views, agents, settings, logs, and data-source pages.
+- Backend: a Spring Boot service exposing OpenTron-style APIs under /v1 for chat, models, agents, memory, speech, telemetry, tools, traces, and orchestration.
+- CLI and tooling: Java-based CLI and supporting utilities for local workflows and agent-driven operations.
+- Infrastructure: Docker-based PostgreSQL setup, PowerShell startup scripts, deployment assets, and documentation for running the stack locally.
 
-- Chat interface with model selection and streaming responses
-- Multi-agent coordination and task orchestration
-- Speech and voice-related endpoints and UI hooks
-- Memory, trace, connector, and telemetry surfaces
-- Local inference routing with optional cloud connectors
-- PostgreSQL integration for persistent storage and dashboards
+This should be treated as an active implementation with a functional foundation rather than a static scaffold. The core user flows are present, and several integrations continue to be refined as the platform evolves.
 
-## Repository layout
+## What is implemented today
 
-- frontend/: React frontend and Tauri desktop integration
-- java/opentron-java/: Java modules, including the backend and CLI
-- configs/, deploy/, docs/, scripts/: project configuration, deployment assets, and docs
-- examples/, assets/, tests/: sample data, static assets, and test coverage
+### User experience
+- Chat interface with model selection and streaming-style interactions
+- Agent and coordinator views for task routing and multi-agent workflows
+- Settings, logs, and storage-oriented dashboards
+- Desktop-oriented startup and integration hooks via Tauri
+
+### Backend capabilities
+- REST endpoints for chat, models, agents, memory, speech, telemetry, tools, and traces
+- WebSocket support for streaming chat and agent events
+- Routing logic for local inference and external model providers
+- Persistence and trace-oriented storage patterns with PostgreSQL support
+
+### Project structure
+- frontend/: React frontend and Tauri integration
+- java/opentron-java/: Maven multi-module Java project with backend and CLI modules
+- configs/, deploy/, docs/: configuration, deployment assets, and documentation
+- src/ and tools/: additional source code and helper projects
 
 ## Prerequisites
 
-For the full stack locally, make sure you have:
+For the full local stack, make sure you have:
 
 - Docker
 - Java 21+
@@ -115,7 +120,7 @@ If you want to preview the web build instead of the desktop app, use:
 npm run dev
 ```
 
-## Build commands
+## Build and test commands
 
 ### Frontend
 
@@ -123,6 +128,7 @@ npm run dev
 cd frontend
 npm run build
 npm run build:tauri
+npm test
 ```
 
 ### Backend
@@ -130,9 +136,10 @@ npm run build:tauri
 ```powershell
 cd java\opentron-java
 mvn clean package -DskipTests
+mvn test
 ```
 
-## Environment notes
+## Environment variables
 
 The stack expects a few environment variables for local development, including:
 

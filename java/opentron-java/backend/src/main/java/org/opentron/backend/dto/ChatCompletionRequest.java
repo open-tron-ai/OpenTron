@@ -2,7 +2,6 @@ package org.opentron.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
-import java.util.Map;
 
 /**
  * DTO for chat completion requests.

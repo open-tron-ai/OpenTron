@@ -95,7 +95,7 @@ public class ModelSelectorService {
 
     /**
      * Frontend specialist: optimize for React, TypeScript, components, state management
-     * Prefers: neural-chat (code-optimized) > qwen3.5:9b > mistral
+     * Prefers: neural-chat (code-optimized) > qwen3:8b > qwen3.5:9b > mistral
      */
     private String selectFrontendModel() {
         // String cloudModel = selectCloudModel(getPreferredCloudModels());
@@ -106,6 +106,10 @@ public class ModelSelectorService {
         if (hasModel("neural-chat")) {
             logger.info("Frontend → neural-chat (React expert)");
             return "neural-chat";
+        }
+        if (hasModel("qwen3:8b")) {
+            logger.info("Frontend → qwen3:8b (fast, capable)");
+            return "qwen3:8b";
         }
         if (hasModel("qwen3.5:9b")) {
             logger.info("Frontend → qwen3.5:9b (fast, capable)");
@@ -161,7 +165,7 @@ public class ModelSelectorService {
 
     /**
      * General purpose: select fastest available
-     * Prefers: neural-chat > qwen3.5:9b > qwen3.5:2b > mistral
+     * Prefers: neural-chat > qwen3:8b > qwen3.5:9b > qwen3.5:2b > mistral
      */
     private String selectGeneralModel() {
         String cloudModel = selectCloudModel(getPreferredCloudModels());
@@ -170,6 +174,7 @@ public class ModelSelectorService {
             return cloudModel;
         }
         if (hasModel("neural-chat")) return "neural-chat";
+        if (hasModel("qwen3:8b")) return "qwen3:8b";
         if (hasModel("qwen3.5:9b")) return "qwen3.5:9b";
         if (hasModel("qwen3.5:2b")) return "qwen3.5:2b";
         return "mistral";

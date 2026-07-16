@@ -1,1 +1,0 @@
-maven is added to path as MAVEN_HOME and jdk as JAVA_HOME

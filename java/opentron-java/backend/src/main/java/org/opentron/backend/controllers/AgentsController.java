@@ -7,14 +7,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.opentron.backend.agents.MultiAgentCoordinator;
 import org.opentron.backend.storage.service.StorageService;
 import org.opentron.backend.storage.entities.TraceLog;
 import reactor.core.publisher.Mono;
-import reactor.util.retry.Retry;
 
 @RestController
 @RequestMapping("/v1/agents")
@@ -77,13 +75,18 @@ public class AgentsController {
                             sink.next(sseEvent("agent_start", Map.of("agent", agent, "message", "Agent " + agent + " is thinking...")));
                         }
                         @Override
+                        public void onAgentChunk(String agent, String chunk) {
+                            if (chunk == null || chunk.isBlank()) return;
+                            sink.next(sseEvent("agent_chunk", Map.of("agent", agent, "chunk", chunk)));
+                        }
+                        @Override
                         public void onAgentDone(String agent, Map<String, Object> result) {
                             String preview = "";
                             if (result.containsKey("response")) {
                                 String r = (String) result.get("response");
-                                preview = r.length() > 120 ? r.substring(0, 120) + "..." : r;
+                                preview = r.length() > 160 ? r.substring(0, 160) + "..." : r;
                             }
-                            sink.next(sseEvent("agent_done", Map.of("agent", agent, "preview", preview)));
+                            sink.next(sseEvent("agent_done", Map.of("agent", agent, "preview", preview, "result", result)));
                         }
                         @Override
                         public void onAgentError(String agent, String error) {

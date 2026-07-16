@@ -182,13 +182,18 @@ function Section({
 // ---------------------------------------------------------------------------
 // Hosted view: visitor on a deployed website
 // ---------------------------------------------------------------------------
-function HostedView() {
+function HostedView({ onDismiss }: { onDismiss?: () => void }) {
   const navigate = useNavigate();
   const [healthy, setHealthy] = useState<boolean | null>(null);
 
   useEffect(() => {
     checkHealth().then(setHealthy);
   }, []);
+
+  const handleNavigate = (path: string) => {
+    onDismiss?.();
+    navigate(path);
+  };
 
   return (
     <div className="text-center mb-14">
@@ -216,7 +221,7 @@ function HostedView() {
             <span>Server is running</span>
           </div>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => handleNavigate('/')}
             className="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl text-sm font-medium transition-opacity cursor-pointer"
             style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
             onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
@@ -250,8 +255,13 @@ function HostedView() {
 // ---------------------------------------------------------------------------
 // Desktop view: running in the Tauri app
 // ---------------------------------------------------------------------------
-function DesktopView() {
+function DesktopView({ onDismiss }: { onDismiss?: () => void }) {
   const navigate = useNavigate();
+
+  const handleNavigate = (path: string) => {
+    onDismiss?.();
+    navigate(path);
+  };
 
   return (
     <>
@@ -292,7 +302,7 @@ function DesktopView() {
           Ollama inference engine, API server, and AI model are active.
         </p>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => handleNavigate('/')}
           className="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl text-sm font-medium transition-opacity cursor-pointer"
           style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
           onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
@@ -320,7 +330,7 @@ function DesktopView() {
 // ---------------------------------------------------------------------------
 // Self-hosted view: running on localhost (manual setup)
 // ---------------------------------------------------------------------------
-function SelfHostedView() {
+function SelfHostedView({ onDismiss }: { onDismiss?: () => void }) {
   const detectedId = useMemo(() => detectPlatform(), []);
   const primary = PLATFORMS.find((p) => p.id === detectedId) || PLATFORMS[0];
   const others = PLATFORMS.filter((p) => p.id !== primary.id);
@@ -470,15 +480,15 @@ function SelfHostedView() {
 // Main page — delegates to the context-appropriate view
 // ---------------------------------------------------------------------------
 
-export function GetStartedPage() {
+export function GetStartedPage({ onDismiss }: { onDismiss?: () => void }) {
   const context = useMemo(detectContext, []);
 
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-2xl mx-auto px-6 py-16">
-        {context === 'hosted' && <HostedView />}
-        {context === 'desktop' && <DesktopView />}
-        {context === 'selfhosted' && <SelfHostedView />}
+        {context === 'hosted' && <HostedView onDismiss={onDismiss} />}
+        {context === 'desktop' && <DesktopView onDismiss={onDismiss} />}
+        {context === 'selfhosted' && <SelfHostedView onDismiss={onDismiss} />}
       </div>
     </div>
   );

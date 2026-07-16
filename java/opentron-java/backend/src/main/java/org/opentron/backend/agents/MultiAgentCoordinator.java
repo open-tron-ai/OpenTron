@@ -2,7 +2,6 @@ package org.opentron.backend.agents;
 
 import java.util.*;
 import java.util.concurrent.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.opentron.backend.telemetry.TelemetryService;
@@ -21,7 +20,6 @@ import org.springframework.stereotype.Component;
 public class MultiAgentCoordinator {
 
     private static final Logger logger = LoggerFactory.getLogger(MultiAgentCoordinator.class);
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private final OllamaCliService ollamaService;
     private final HuggingFaceService huggingFaceService;
     private final CloudModelService cloudModelService;
@@ -113,7 +111,7 @@ public class MultiAgentCoordinator {
                             long start = System.currentTimeMillis();
                             Object result = agent.process(msg);
                             long elapsed = System.currentTimeMillis() - start;
-                            logger.debug("[{}] Processed in {}ms", msg.targetAgent, elapsed);
+                            logger.debug("[{}] Processed in {}ms:{}", msg.targetAgent, elapsed, result);
                         }
                     }
                 } catch (InterruptedException e) {
@@ -127,6 +125,7 @@ public class MultiAgentCoordinator {
     // Callback interface for streaming agent progress
     public interface StreamingCoordinatorCallback {
         void onAgentStart(String agent);
+        void onAgentChunk(String agent, String chunk);
         void onAgentDone(String agent, Map<String, Object> result);
         void onAgentError(String agent, String error);
         void onStatus(String status);
@@ -218,6 +217,38 @@ public class MultiAgentCoordinator {
 
         public abstract Object process(AgentMessage msg);
 
+        protected List<String> asStringList(Object value) {
+            if (value instanceof List<?> values) {
+                List<String> result = new ArrayList<>();
+                for (Object item : values) {
+                    if (item != null) result.add(String.valueOf(item));
+                }
+                return result;
+            }
+            return List.of();
+        }
+
+        protected Map<String, Object> invokeScopedLLM(String role, String task, String context, List<String> focus, List<String> ignore, List<String> constraints, String agentKey, StreamingCoordinatorCallback callback) {
+            String systemPrompt = "You are a " + role + ". Solve only the relevant domain. "
+                    + "Stay concise and use the provided context. "
+                    + "Focus on: " + String.join(", ", focus.isEmpty() ? List.of("the core request") : focus) + ". "
+                    + (ignore.isEmpty() ? "" : "Do not address: " + String.join(", ", ignore) + ". ")
+                    + (constraints.isEmpty() ? "" : "Constraints: " + String.join(", ", constraints) + ".");
+
+            String userQuestion = "Task: " + task + "\n\nRelevant context:\n" + context + "\n\nRespond with a helpful specialist answer.";
+            final StringBuilder acc = new StringBuilder();
+            Map<String, Object> result = llmBridge.queryLLMStream(systemPrompt, userQuestion, 256, (chunk) -> {
+                acc.append(chunk);
+                if (callback != null) callback.onAgentChunk(agentKey, chunk);
+            });
+            // ensure the streamed text is available as `response` when possible
+            if (result != null && (!result.containsKey("response") || String.valueOf(result.get("response") == null).isBlank())) {
+                result.put("response", acc.toString());
+            }
+            result.put("agent", agentKey);
+            return result;
+        }
+
         public Map<String, Object> getStatus() {
             return Map.of(
                 "name", name,
@@ -269,16 +300,16 @@ public class MultiAgentCoordinator {
                         if (callback != null) callback.onAgentStart(agentName);
                         SpecializedAgent agent = coordinator.agents.get(agentName);
                         if (agent != null) {
-                            AgentMessage msg = new AgentMessage(
-                                agentName, "task",
-                                Map.of("request", userRequest, "context", context)
-                            );
+                            List<String> focusedSkills = inferSkillsForAgent(agentName, userRequest, context);
+                            Map<String, Object> specialistPayload = buildSpecialistTaskPayload(userRequest, context, agentName, focusedSkills);
+
+                            AgentMessage msg = new AgentMessage(agentName, "task", specialistPayload, callback);
                             Map<String, Object> result = (Map<String, Object>) agent.process(msg);
                             if (callback != null) {
                                 if ("error".equals(result.get("status"))) {
                                     callback.onAgentError(agentName, (String) result.getOrDefault("error", "unknown"));
                                 } else {
-                                    callback.onAgentDone(agentName, result);
+                                    emitAgentChunks(agentName, result, callback);
                                 }
                             }
                             return result;
@@ -322,6 +353,114 @@ public class MultiAgentCoordinator {
 
             this.lastExecutedTime = elapsed;
             return finalResult;
+        }
+
+        private Map<String, Object> buildSpecialistTaskPayload(String userRequest, String context, String agentName, List<String> focusedSkills) {
+            String normalizedContext = context == null ? "" : context.trim();
+            String requestSummary = userRequest == null ? "" : userRequest.trim();
+            List<String> focus = new ArrayList<>();
+            List<String> ignore = new ArrayList<>();
+            List<String> constraints = List.of("stay concise", "address only the relevant domain", "avoid unrelated suggestions");
+
+            switch (agentName) {
+                case "backend" -> {
+                    focus.addAll(List.of("API design", "database access", "caching", "performance", "error handling"));
+                    ignore.addAll(List.of("UI", "React", "CSS", "visual design"));
+                }
+                case "frontend" -> {
+                    focus.addAll(List.of("React", "component design", "state flow", "responsive behavior", "accessibility"));
+                    ignore.addAll(List.of("backend services", "database schema", "deployment"));
+                }
+                case "qa" -> {
+                    focus.addAll(List.of("testing strategy", "debugging", "regression risks", "verification steps"));
+                    ignore.addAll(List.of("visual styling", "deployment automation"));
+                }
+                case "devops" -> {
+                    focus.addAll(List.of("monitoring", "observability", "resource usage", "reliability"));
+                    ignore.addAll(List.of("UI implementation", "business logic"));
+                }
+                default -> {
+                    focus.addAll(List.of("core request"));
+                }
+            }
+
+            if (!focusedSkills.isEmpty()) {
+                focus.addAll(focusedSkills);
+            }
+
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("agent", agentName);
+            payload.put("task", "Respond to the request from the perspective of the " + agentName + " specialist.");
+            payload.put("request_summary", requestSummary);
+            payload.put("request", requestSummary);
+            payload.put("focus", focus);
+            payload.put("ignore", ignore);
+            payload.put("relevant_context", normalizedContext.isBlank() ? requestSummary : normalizedContext);
+            payload.put("constraints", constraints);
+            payload.put("domain", agentName);
+            return payload;
+        }
+
+        private List<String> inferSkillsForAgent(String agentName, String request, String context) {
+            String combined = (request == null ? "" : request) + " " + (context == null ? "" : context);
+            String lower = combined.toLowerCase(Locale.ROOT);
+            return switch (agentName) {
+                case "backend" -> {
+                    List<String> skills = new ArrayList<>();
+                    if (lower.contains("spring") || lower.contains("java") || lower.contains("api") || lower.contains("database") || lower.contains("cache")) {
+                        skills.add("spring_boot_configuration");
+                        skills.add("database_query_optimization");
+                    }
+                    yield skills;
+                }
+                case "frontend" -> {
+                    List<String> skills = new ArrayList<>();
+                    if (lower.contains("react") || lower.contains("ui") || lower.contains("component") || lower.contains("typescript") || lower.contains("frontend")) {
+                        skills.add("react_optimization");
+                        skills.add("component_design");
+                    }
+                    yield skills;
+                }
+                case "qa" -> {
+                    List<String> skills = new ArrayList<>();
+                    if (lower.contains("test") || lower.contains("debug") || lower.contains("fix") || lower.contains("review")) {
+                        skills.add("debugging");
+                        skills.add("integration_testing");
+                    }
+                    yield skills;
+                }
+                case "devops" -> {
+                    List<String> skills = new ArrayList<>();
+                    if (lower.contains("monitor") || lower.contains("metric") || lower.contains("health") || lower.contains("deploy") || lower.contains("performance")) {
+                        skills.add("performance_monitoring");
+                        skills.add("health_checks");
+                    }
+                    yield skills;
+                }
+                default -> List.of();
+            };
+        }
+
+        private void emitAgentChunks(String agentName, Map<String, Object> result, StreamingCoordinatorCallback callback) {
+            String text = result.containsKey("response") ? String.valueOf(result.get("response")) : "";
+            if (text == null || text.isBlank()) {
+                callback.onAgentDone(agentName, result);
+                return;
+            }
+
+            String normalized = text.trim();
+            if (normalized.length() <= 1) {
+                callback.onAgentChunk(agentName, normalized);
+                callback.onAgentDone(agentName, result);
+                return;
+            }
+
+            int chunkSize = Math.max(1, normalized.length() / 12 + 1);
+            for (int i = 0; i < normalized.length(); i += chunkSize) {
+                int end = Math.min(i + chunkSize, normalized.length());
+                callback.onAgentChunk(agentName, normalized.substring(i, end));
+            }
+            callback.onAgentDone(agentName, result);
         }
 
         private String buildTronChatResponse(String userRequest, List<String> agentsUsed, 
@@ -409,11 +548,14 @@ public class MultiAgentCoordinator {
             long start = System.currentTimeMillis();
             @SuppressWarnings("unchecked")
             Map<String, Object> payload = (Map<String, Object>) msg.payload;
-            String userRequest = (String) payload.get("request");
+            String task = String.valueOf(payload.getOrDefault("task", payload.getOrDefault("request", "")));
+            String context = String.valueOf(payload.getOrDefault("relevant_context", payload.getOrDefault("context", "")));
+            List<String> focus = asStringList(payload.get("focus"));
+            List<String> ignore = asStringList(payload.get("ignore"));
+            List<String> constraints = asStringList(payload.get("constraints"));
 
-            Map<String, Object> result = new HashMap<>(llmBridge.queryLLM("Backend optimization expert", userRequest, 256));
+            Map<String, Object> result = invokeScopedLLM("backend optimization expert", task, context, focus, ignore, constraints, "backend", msg.streamCallback);
             this.lastExecutedTime = System.currentTimeMillis() - start;
-            result.put("agent", "backend");
             return result;
         }
     }
@@ -439,11 +581,14 @@ public class MultiAgentCoordinator {
             long start = System.currentTimeMillis();
             @SuppressWarnings("unchecked")
             Map<String, Object> payload = (Map<String, Object>) msg.payload;
-            String userRequest = (String) payload.get("request");
+            String task = String.valueOf(payload.getOrDefault("task", payload.getOrDefault("request", "")));
+            String context = String.valueOf(payload.getOrDefault("relevant_context", payload.getOrDefault("context", "")));
+            List<String> focus = asStringList(payload.get("focus"));
+            List<String> ignore = asStringList(payload.get("ignore"));
+            List<String> constraints = asStringList(payload.get("constraints"));
 
-            Map<String, Object> result = new HashMap<>(llmBridge.queryLLM("Frontend React expert", userRequest, 256));
+            Map<String, Object> result = invokeScopedLLM("frontend React expert", task, context, focus, ignore, constraints, "frontend", msg.streamCallback);
             this.lastExecutedTime = System.currentTimeMillis() - start;
-            result.put("agent", "frontend");
             return result;
         }
     }
@@ -469,11 +614,14 @@ public class MultiAgentCoordinator {
             long start = System.currentTimeMillis();
             @SuppressWarnings("unchecked")
             Map<String, Object> payload = (Map<String, Object>) msg.payload;
-            String userRequest = (String) payload.get("request");
+            String task = String.valueOf(payload.getOrDefault("task", payload.getOrDefault("request", "")));
+            String context = String.valueOf(payload.getOrDefault("relevant_context", payload.getOrDefault("context", "")));
+            List<String> focus = asStringList(payload.get("focus"));
+            List<String> ignore = asStringList(payload.get("ignore"));
+            List<String> constraints = asStringList(payload.get("constraints"));
 
-            Map<String, Object> result = new HashMap<>(llmBridge.queryLLM("DevOps monitoring expert", userRequest, 256));
+            Map<String, Object> result = invokeScopedLLM("DevOps monitoring expert", task, context, focus, ignore, constraints, "devops", msg.streamCallback);
             this.lastExecutedTime = System.currentTimeMillis() - start;
-            result.put("agent", "devops");
             return result;
         }
     }
@@ -499,11 +647,14 @@ public class MultiAgentCoordinator {
             long start = System.currentTimeMillis();
             @SuppressWarnings("unchecked")
             Map<String, Object> payload = (Map<String, Object>) msg.payload;
-            String userRequest = (String) payload.get("request");
+            String task = String.valueOf(payload.getOrDefault("task", payload.getOrDefault("request", "")));
+            String context = String.valueOf(payload.getOrDefault("relevant_context", payload.getOrDefault("context", "")));
+            List<String> focus = asStringList(payload.get("focus"));
+            List<String> ignore = asStringList(payload.get("ignore"));
+            List<String> constraints = asStringList(payload.get("constraints"));
 
-            Map<String, Object> result = new HashMap<>(llmBridge.queryLLM("QA testing expert", userRequest, 256));
+            Map<String, Object> result = invokeScopedLLM("QA testing expert", task, context, focus, ignore, constraints, "qa", msg.streamCallback);
             this.lastExecutedTime = System.currentTimeMillis() - start;
-            result.put("agent", "qa");
             return result;
         }
     }
@@ -513,19 +664,27 @@ public class MultiAgentCoordinator {
         public String type;
         public Object payload;
         public String replyTo;
+        public StreamingCoordinatorCallback streamCallback;
         public long timestamp = System.currentTimeMillis();
 
         public AgentMessage(String targetAgent, String type, Object payload) {
-            this.targetAgent = targetAgent;
-            this.type = type;
-            this.payload = payload;
+            this(targetAgent, type, payload, (String) null, null);
         }
 
         public AgentMessage(String targetAgent, String type, Object payload, String replyTo) {
+            this(targetAgent, type, payload, replyTo, null);
+        }
+
+        public AgentMessage(String targetAgent, String type, Object payload, StreamingCoordinatorCallback streamCallback) {
+            this(targetAgent, type, payload, null, streamCallback);
+        }
+
+        public AgentMessage(String targetAgent, String type, Object payload, String replyTo, StreamingCoordinatorCallback streamCallback) {
             this.targetAgent = targetAgent;
             this.type = type;
             this.payload = payload;
             this.replyTo = replyTo;
+            this.streamCallback = streamCallback;
         }
     }
 }

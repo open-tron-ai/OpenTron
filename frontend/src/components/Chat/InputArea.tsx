@@ -81,6 +81,8 @@ export function InputArea() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const agentSectionsRef = useRef<Record<string, string>>({});
+  const agentMessageIdsRef = useRef<Record<string, string>>({});
 
 
   const activeId = useAppStore((s) => s.activeId);
@@ -99,6 +101,7 @@ export function InputArea() {
   const deepResearch = useAppStore((s) => s.deepResearch);
   const setDeepResearch = useAppStore((s) => s.setDeepResearch);
   const corpusSync = useResearchCorpusSync(deepResearch);
+  const streamingEnabled = useAppStore((s) => s.settings.streamingEnabled);
 
   const {
     state: speechState,
@@ -238,48 +241,93 @@ export function InputArea() {
           ttftMs = Date.now() - startTime;
           accumulatedContent = '';
           accumulatedContentRef.current = '';
+          agentSectionsRef.current = {};
+          agentMessageIdsRef.current = {};
 
           const coordinatorResponse = await coordinateAgents(content, contextHistory, (event) => {
             if (event.type === 'status') {
               setStreamState({ phase: event.message || 'Coordinating...' });
             } else if (event.type === 'agent_start') {
-              setStreamState({ phase: `${event.agent} agent is thinking...` });
+              const agent = event.agent || 'specialist';
+              const agentName = agent.charAt(0).toUpperCase() + agent.slice(1);
+              agentSectionsRef.current[agent] = '';
+              
+              // Create a new message for this agent
+              const agentMsg: ChatMessage = {
+                id: generateId(),
+                role: 'assistant',
+                content: `🤔 ${agentName} agent is thinking...`,
+                timestamp: Date.now(),
+              };
+              addMessage(convId, agentMsg);
+              agentMessageIdsRef.current[agent] = agentMsg.id;
+              
+              setStreamState({ phase: `🤔 ${agentName} agent thinking...` });
+            } else if (event.type === 'agent_chunk') {
+              const agent = event.agent || 'specialist';
+              let chunk = event.chunk || '';
+              // Normalize chunk: remove nulls and control characters that break rendering
+              chunk = chunk.replace(/\u0000/g, '').replace(/\r/g, '');
+              const current = agentSectionsRef.current[agent] || '';
+              // Ensure spacing between chunks when needed
+              const needsSep = current && !/\s$/.test(current) && !/^\s/.test(chunk);
+              const next = current + (needsSep ? ' ' : '') + chunk;
+              agentSectionsRef.current[agent] = next;
+              // Don't update the message during streaming - only show status
+              const agentName = agent.charAt(0).toUpperCase() + agent.slice(1);
+              setStreamState({ phase: `💭 ${agentName} agent thinking...` });
             } else if (event.type === 'agent_done') {
               const preview = event.preview || '';
-              if (preview) {
-                accumulatedContentRef.current += (accumulatedContentRef.current ? '\n\n' : '') + `**${event.agent} Agent:**\n${preview}`;
-                setStreamState({ content: accumulatedContentRef.current, phase: `${event.agent} done, waiting for others...` });
-                updateLastAssistant(convId, accumulatedContentRef.current);
-              } else {
-                setStreamState({ phase: `${event.agent} done, waiting for others...` });
+              const agent = event.agent || 'specialist';
+              
+              // Use accumulated chunks as the complete response
+              // Preview might be truncated or a summary, so prefer accumulated content
+              let finalContent = agentSectionsRef.current[agent] || '';
+              
+              // Only append preview if we don't have accumulated chunks
+              if (!finalContent && preview) {
+                const cleanPreview = preview.replace(/\u0000/g, '').replace(/\r/g, '');
+                finalContent = cleanPreview;
               }
+              
+              agentSectionsRef.current[agent] = finalContent;
+              
+              // Update the agent message with full response (preserving agent header for detection)
+              const agentName = agent.charAt(0).toUpperCase() + agent.slice(1);
+              const msgId = agentMessageIdsRef.current[agent];
+              if (msgId) {
+                const fullContent = `✓ ${agentName} Agent\n\n${finalContent || '(No response)'}`;
+                useAppStore.getState().updateMessage(
+                  convId,
+                  msgId,
+                  fullContent
+                );
+              }
+              
+              // Clear phase to avoid lingering status text
+              setStreamState({ phase: '' });
             } else if (event.type === 'agent_error') {
-              setStreamState({ phase: `${event.agent} encountered an error...` });
+              const agent = event.agent || 'specialist';
+              const agentName = agent.charAt(0).toUpperCase() + agent.slice(1);
+              const msgId = agentMessageIdsRef.current[agent];
+              if (msgId) {
+                useAppStore.getState().updateMessage(
+                  convId,
+                  msgId,
+                  `❌ ${agentName} Agent\n\nEncountered an error while processing your request.`
+                );
+              }
+              setStreamState({ phase: '' });
             }
           });
 
           const parsed = parseCoordinatorResponse(coordinatorResponse);
 
-          // Preserve accumulated partial results and append final summary if available
-          if (accumulatedContentRef.current) {
-            // We have incremental agent results — keep them
-            accumulatedContent = accumulatedContentRef.current;
-            // If there's a final tron_response that differs from our accumulation, append it as a summary
-            if (parsed.tronResponse && parsed.tronResponse !== 'Processing complete.' && !accumulatedContent.includes(parsed.tronResponse)) {
-              accumulatedContent += '\n\n---\n\n**Final Summary:**\n' + parsed.tronResponse;
-            }
-          } else if (parsed.tronResponse && parsed.tronResponse !== 'Processing complete.') {
-            // No incremental results, use the final tron_response
-            accumulatedContent = parsed.tronResponse;
-          } else {
-            accumulatedContent = 'Processing complete.';
-          }
-
           useAppStore.getState().addLogEntry({
             timestamp: Date.now(),
             level: 'info',
             category: 'chat',
-            message: `Tron used: ${parsed.agentsUsed.join(', ') || 'specialist agents'} in ${parsed.elapsedMs}ms`,
+            message: `Tron coordinated: ${parsed.agentsUsed.join(', ') || 'specialist agents'} in ${parsed.elapsedMs}ms`,
           });
 
           const telemetry: MessageTelemetry = {
@@ -289,15 +337,26 @@ export function InputArea() {
             ttft_ms: ttftMs,
           };
 
-          setStreamState({ content: accumulatedContent, phase: '' });
-          updateLastAssistant(
-            convId,
-            accumulatedContent,
-            undefined,
-            undefined,
-            telemetry,
-            undefined,
-          );
+          setStreamState({ content: '', phase: 'Generating final summary...' });
+
+          // Add the final coordinator summary as a separate emphasized message
+          if (parsed.tronResponse && parsed.tronResponse !== 'Processing complete.' && parsed.tronResponse.trim()) {
+            const summaryMsg: ChatMessage = {
+              id: generateId(),
+              role: 'assistant',
+              content: `## 🎯 Analysis Results\n\n${parsed.tronResponse}`,
+              timestamp: Date.now(),
+              telemetry,
+            };
+            addMessage(convId, summaryMsg);
+            // Set accumulatedContent to prevent "No response" error in finally block
+            accumulatedContent = 'Coordinator analysis complete';
+          } else {
+            // Even if no explicit summary, mark as complete
+            accumulatedContent = 'Coordination complete';
+          }
+
+          setStreamState({ content: '', phase: '' });
         } catch (err: any) {
           console.error('[InputArea] Coordinator error:', err);
           const errMsg = err?.response?.data?.error || err?.message || String(err);
@@ -706,6 +765,22 @@ export function InputArea() {
           >
             <Bot size={12} />
             Tron Coordinator
+          </button>
+          <button
+            type="button"
+            onClick={() => useAppStore.getState().updateSettings({ streamingEnabled: !streamingEnabled })}
+            disabled={streamState.isStreaming}
+            aria-pressed={streamingEnabled}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-colors cursor-pointer disabled:cursor-default disabled:opacity-50"
+            style={{
+              background: streamingEnabled ? 'var(--color-accent-subtle)' : 'transparent',
+              border: `1px solid ${streamingEnabled ? 'var(--color-accent)' : 'var(--color-border)'}`,
+              color: streamingEnabled ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
+            }}
+            title={streamingEnabled ? 'Streaming: on' : 'Streaming: off'}
+          >
+            S
+            Streaming
           </button>
           <button
             type="button"
