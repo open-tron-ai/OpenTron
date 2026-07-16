@@ -37,22 +37,13 @@ These are great starting points for new contributors:
 - New eval datasets and scorers
 - Test coverage improvements
 
-Look for issues labeled [`good-first-issue`](https://github.com/open-Tron/OpenTron/labels/good-first-issue).
 
 ### Ideal Contributions
 
 - Bug fixes with tests
 - Performance improvements
-- New tools, engines, or agents following the [registry pattern](docs/development/contributing.md#registry-pattern)
+- New tools, engines, or agents 
 - New channel integrations (Telegram, Discord, Slack, etc.)
-
-### Harder to Review
-
-These require more context and review time. **Please open an issue for discussion before starting a PR:**
-
-- New primitives or major extensions to existing ones
-- Large refactors
-- Changes to core abstractions (`BaseAgent`, `InferenceEngine`, etc.)
 
 ### May Not Be Accepted
 
