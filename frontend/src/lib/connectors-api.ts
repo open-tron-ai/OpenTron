@@ -1,4 +1,4 @@
-import { getBase } from './api';
+import { apiFetch, getBase } from './api';
 import type { ConnectorInfo, SyncStatus, ConnectRequest, ConnectResponse } from '../types/connectors';
 
 // ---------------------------------------------------------------------------
@@ -6,39 +6,50 @@ import type { ConnectorInfo, SyncStatus, ConnectRequest, ConnectResponse } from 
 // ---------------------------------------------------------------------------
 
 export async function listConnectors(): Promise<ConnectorInfo[]> {
-  const res = await fetch(`${getBase()}/v1/connectors`);
+  const res = await apiFetch(`/v1/connectors`);
   if (!res.ok) throw new Error(`Failed to list connectors: ${res.status}`);
   const data = await res.json();
   return data.connectors || [];
 }
 
 export async function getConnector(id: string): Promise<ConnectorInfo> {
-  const res = await fetch(`${getBase()}/v1/connectors/${encodeURIComponent(id)}`);
+  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}`);
   if (!res.ok) throw new Error(`Failed to get connector ${id}: ${res.status}`);
   return res.json();
 }
 
 export async function connectSource(id: string, req: ConnectRequest): Promise<ConnectResponse> {
-  const res = await fetch(`${getBase()}/v1/connectors/${encodeURIComponent(id)}/connect`, {
+  // Build the body the Java controller expects
+  const body: Record<string, string> = {};
+  if (req.clientId)                         { body.clientId = req.clientId; if (req.clientSecret) body.clientSecret = req.clientSecret; }
+  else if (req.path)                         body.path     = req.path;
+  else if (req.email && req.password)       { body.email    = req.email; body.password = req.password; }
+  else if (req.token)                        body.token    = req.token;
+  else if (req.code)                         body.code     = req.code;
+
+  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}/connect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(req),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
-    // Surface the backend's actionable detail (e.g. malformed Client ID /
-    // Secret) instead of a bare status code so the UI can render it.
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || `Failed to connect ${id}: ${res.status}`);
   }
-  return res.json();
+  return res.json() as Promise<ConnectResponse>;
 }
 
 /** Open the server-side OAuth consent flow in a popup and resolve once the
- *  connector reports connected (or reject on timeout). Reused for any OAuth
- *  connector whose /connect returned `oauth_required` (issue #512). */
+ *  connector reports connected (or reject on timeout). */
 export function startServerOAuth(id: string, oauthStartPath?: string): Promise<void> {
-  const path = oauthStartPath || `/v1/connectors/${encodeURIComponent(id)}/oauth/start`;
-  window.open(`${getBase()}${path}`, '_blank', 'width=600,height=700');
+  // oauthStartPath may be a full URL (https://accounts.google.com/...) or a
+  // server-relative path (/v1/connectors/.../oauth/start). Only prepend base
+  // for relative paths.
+  const isFullUrl = oauthStartPath && (oauthStartPath.startsWith('http://') || oauthStartPath.startsWith('https://'));
+  const url = isFullUrl
+    ? oauthStartPath!
+    : `${getBase()}${oauthStartPath || `/v1/connectors/${encodeURIComponent(id)}/oauth/start`}`;
+  window.open(url, '_blank', 'width=600,height=700');
   return new Promise((resolve, reject) => {
     const interval = setInterval(async () => {
       try {
@@ -60,20 +71,20 @@ export function startServerOAuth(id: string, oauthStartPath?: string): Promise<v
 }
 
 export async function disconnectSource(id: string): Promise<void> {
-  const res = await fetch(`${getBase()}/v1/connectors/${encodeURIComponent(id)}/disconnect`, {
+  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}/disconnect`, {
     method: 'POST',
   });
   if (!res.ok) throw new Error(`Failed to disconnect ${id}: ${res.status}`);
 }
 
 export async function getSyncStatus(id: string): Promise<SyncStatus> {
-  const res = await fetch(`${getBase()}/v1/connectors/${encodeURIComponent(id)}/sync`);
+  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}/sync`);
   if (!res.ok) throw new Error(`Failed to get sync status for ${id}: ${res.status}`);
   return res.json();
 }
 
 export async function triggerSync(id: string): Promise<{ connector_id: string; chunks_indexed: number; status: string }> {
-  const res = await fetch(`${getBase()}/v1/connectors/${encodeURIComponent(id)}/sync`, {
+  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}/sync`, {
     method: 'POST',
   });
   if (!res.ok) {

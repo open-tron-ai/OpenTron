@@ -4,6 +4,9 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
+  min-height: 100%;
+  overflow-y: auto;
+  padding-bottom: 4rem;
 }
 
 .agents-page h1 {
@@ -50,12 +53,20 @@
   letter-spacing: 1px;
 }
 
-/* AGENTS GRID - 2x2 */
+/* AGENTS GRID - 2 columns, last odd item spans full width */
 .agents-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
   margin-bottom: 2rem;
+}
+
+/* Span full width when the card is the only item on its row */
+.agents-grid .agent-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  max-width: 700px;
+  justify-self: center;
+  width: 100%;
 }
 
 /* AGENT CARDS */

@@ -118,6 +118,17 @@ public class SkillBasedOrchestrator {
             skills.add("health_checks");
         }
 
+        // KNOWLEDGE skills
+        if (lower.contains("find") || lower.contains("search") || lower.contains("what") ||
+            lower.contains("who") || lower.contains("when") || lower.contains("tell me") ||
+            lower.contains("summarize") || lower.contains("recall") || lower.contains("email") ||
+            lower.contains("meeting") || lower.contains("document") || lower.contains("note") ||
+            lower.contains("slack") || lower.contains("calendar") || lower.contains("contact")) {
+            skills.add("search_memory");
+            skills.add("search_documents");
+            skills.add("search_emails");
+        }
+
         // Default: code + frontend
         if (skills.isEmpty()) {
             skills.add("java_optimization");
@@ -194,6 +205,9 @@ public class SkillBasedOrchestrator {
                 break;
             case "DEVOPS":
                 matches.add(new AgentSkillMatch("devops", 0.95, requiredSkills));
+                break;
+            case "KNOWLEDGE":
+                matches.add(new AgentSkillMatch("knowledge", 0.95, requiredSkills));
                 break;
             default:
                 // Generic fallback
@@ -314,6 +328,14 @@ public class SkillBasedOrchestrator {
             skillToDomain.put("performance_testing", "QA");
             skillToDomain.put("security_testing", "QA");
 
+            // KNOWLEDGE domain
+            skillToDomain.put("search_memory",    "KNOWLEDGE");
+            skillToDomain.put("search_documents", "KNOWLEDGE");
+            skillToDomain.put("search_emails",    "KNOWLEDGE");
+            skillToDomain.put("search_notes",     "KNOWLEDGE");
+            skillToDomain.put("search_calendar",  "KNOWLEDGE");
+            skillToDomain.put("search_contacts",  "KNOWLEDGE");
+
             // DEVOPS domain
             skillToDomain.put("performance_monitoring", "DEVOPS");
             skillToDomain.put("metrics_collection", "DEVOPS");
@@ -329,3 +351,4 @@ public class SkillBasedOrchestrator {
 
 
 }
+

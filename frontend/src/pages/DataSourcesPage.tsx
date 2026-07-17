@@ -1,4 +1,4 @@
-ï»¿import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion } from 'motion/react';
 import { useAppStore } from '../lib/store';
 import {
@@ -54,6 +54,8 @@ function InlineConnectForm({
       else if (f.name === 'password') req.password = inputs.password;
       else if (f.name === 'token') req.token = inputs.token;
       else if (f.name === 'path') req.path = inputs.path;
+      else if (f.name === 'clientId') req.clientId = inputs.clientId;
+      else if (f.name === 'clientSecret') req.clientSecret = inputs.clientSecret;
     }
     if (req.email && req.password) {
       req.token = `${req.email}:${req.password}`;
@@ -313,7 +315,7 @@ const IconFor = ({ id, size = 18 }: { id: string; size?: number }) => {
 };
 
 // The Gmail card unifies the OAuth (`gmail`) and IMAP (`gmail_imap`) backend
-// connectors â€” both should resolve to the gmail_imap catalog entry so the
+// connectors — both should resolve to the gmail_imap catalog entry so the
 // connected card shows the same name, unit label, and troubleshooting tips
 // regardless of which underlying flow the user picked.
 function metaFor(connectorId: string) {
@@ -369,14 +371,14 @@ function GmailOAuthAdvanced({
               rel="noopener noreferrer"
               style={{ color: 'var(--color-accent)', textDecoration: 'underline' }}
             >
-              Google Cloud Credentials â†’
+              Google Cloud Credentials ?
             </a>{' '}
             then paste the Client ID and Client Secret below.
           </div>
           <InlineConnectForm
             fields={[
-              { name: 'email', placeholder: 'Client ID', type: 'text' },
-              { name: 'password', placeholder: 'Client Secret', type: 'password' },
+              { name: 'clientId', placeholder: 'Client ID', type: 'text' },
+              { name: 'clientSecret', placeholder: 'Client Secret', type: 'password' },
             ]}
             loading={loading}
             onSubmit={onConnect}
@@ -478,19 +480,19 @@ function SyncStatusDisplay({
   }
 
   // Treat the SyncEngine's checkpointed items_synced as the source of
-  // truth for "total indexed" â€” `chunks` from listConnectors counts
+  // truth for "total indexed" — `chunks` from listConnectors counts
   // embedding chunks (often != source items) and the checkpoint is what
   // both the syncing and idle branches need to display consistently.
   const totalIndexed = sync?.items_synced ?? chunks;
   const itemsTotal = sync?.items_total ?? 0;
   const backlogRange = formatBacklogRange(sync?.oldest_item_date);
-  // "Complete inbox" â€” the user has indexed everything reachable. Only
+  // "Complete inbox" — the user has indexed everything reachable. Only
   // surface this label when idle (during a sync we always show how far
   // back we've gotten so far).
   const isComplete =
     totalIndexed > 0 && itemsTotal > 0 && totalIndexed >= itemsTotal;
 
-  // Actively syncing â€” single status line + reassurance line.
+  // Actively syncing — single status line + reassurance line.
   if (sync?.state === 'syncing' || syncing) {
     const rangeLabel = backlogRange ?? 'building corpus';
     return (
@@ -504,17 +506,17 @@ function SyncStatusDisplay({
             ({rangeLabel})
           </span>{' '}
           <span style={{ color: 'var(--color-text-tertiary)' }}>
-            Â· Still indexingâ€¦
+            · Still indexing…
           </span>
         </div>
         <div style={{ fontSize: 10.5, color: 'var(--color-text-tertiary)' }}>
-          Deep Research available now Â· results improve as more {unitLabel} are indexed
+          Deep Research available now · results improve as more {unitLabel} are indexed
         </div>
       </div>
     );
   }
 
-  // Idle â€” already has indexed items: show the corpus size + range or
+  // Idle — already has indexed items: show the corpus size + range or
   // "complete inbox" label, plus how long ago we last refreshed it.
   if (totalIndexed > 0) {
     const lastSyncLabel = formatTimeAgo(sync?.last_sync);
@@ -533,7 +535,7 @@ function SyncStatusDisplay({
             )}
             {lastSyncLabel && (
               <span style={{ color: 'var(--color-text-tertiary)' }}>
-                {' Â· '}Last synced {lastSyncLabel}
+                {' · '}Last synced {lastSyncLabel}
               </span>
             )}
           </span>
@@ -565,8 +567,8 @@ function SyncStatusDisplay({
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
           {hasSynced
-            ? `Synced â€” 0 ${unitLabel} found`
-            : 'Connected â€” not synced yet'}
+            ? `Synced — 0 ${unitLabel} found`
+            : 'Connected — not synced yet'}
         </span>
         <button
           onClick={handleSync}
@@ -636,7 +638,8 @@ function DataSourcesSection() {
 
   useEffect(() => {
     loadConnectors();
-    const interval = setInterval(loadConnectors, 10000);
+    const hasSyncingConnector = connectors.some(c => c.connected);
+    const interval = setInterval(loadConnectors, hasSyncingConnector ? 4000 : 10000);
     return () => clearInterval(interval);
   }, [loadConnectors]);
 
@@ -660,7 +663,7 @@ function DataSourcesSection() {
       await disconnectSource(id);
       loadConnectors();
     } catch {
-      // Surface failures silently â€” the connector list will refresh on the
+      // Surface failures silently — the connector list will refresh on the
       // next poll and reflect the true state regardless.
     } finally {
       setDisconnectingId(null);
@@ -680,7 +683,7 @@ function DataSourcesSection() {
       // returns `oauth_required` with the path to the in-process consent flow,
       // which is the only path that actually mints an access token. Open it now
       // and wait for the callback to flip the connector to connected. Without
-      // this the connector would stay "pending" forever â€” the exact #512 bug.
+      // this the connector would stay "pending" forever — the exact #512 bug.
       if (resp.status === 'oauth_required') {
         setConnectStage('Opening Google sign-in...');
         await startServerOAuth(id, resp.oauth_start);
@@ -719,7 +722,7 @@ function DataSourcesSection() {
     } catch (err: any) {
       let errorMsg = err.message || 'Connection failed';
       if (id === 'gmail_imap' && (errorMsg.includes('auth') || errorMsg.includes('credentials') || errorMsg.includes('LOGIN'))) {
-        errorMsg = 'Invalid credentials â€” make sure you\'re using an App Password (16 characters), not your regular Gmail password.';
+        errorMsg = 'Invalid credentials — make sure you\'re using an App Password (16 characters), not your regular Gmail password.';
       }
       setConnectError(errorMsg);
       setConnectStage('');
@@ -750,7 +753,7 @@ function DataSourcesSection() {
       const dropId = gmail.chunks >= gmailImap.chunks ? 'gmail_imap' : 'gmail';
       return connectors.filter((c) => c.connector_id !== dropId);
     }
-    // Neither connected â€” show only the IMAP card as the default flow.
+    // Neither connected — show only the IMAP card as the default flow.
     return connectors.filter((c) => c.connector_id !== 'gmail');
   })();
 
@@ -767,7 +770,7 @@ function DataSourcesSection() {
       <div className="flex flex-col gap-5">
         <section>
           <div className="hud-label mb-2" style={{ color: 'var(--color-text-tertiary)' }}>
-            Loading sourcesâ€¦
+            Loading sources…
           </div>
           <div className="flex flex-col gap-2">
             {[0, 1, 2, 3].map((i) => (
@@ -794,7 +797,7 @@ function DataSourcesSection() {
         <section>
           <div className="hud-label mb-2 flex items-center gap-2">
             <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 999, background: 'var(--color-success)' }} />
-            Connected Â· {connected.length}
+            Connected · {connected.length}
           </div>
           <div className="flex flex-col gap-2">
           {connected.map((c) => {
@@ -843,7 +846,7 @@ function DataSourcesSection() {
                       opacity: disconnectingId === c.connector_id ? 0.5 : 1,
                     }}
                   >
-                    {disconnectingId === c.connector_id ? 'Disconnectingâ€¦' : 'Disconnect'}
+                    {disconnectingId === c.connector_id ? 'Disconnecting…' : 'Disconnect'}
                   </button>
                 </div>
               </div>
@@ -858,7 +861,7 @@ function DataSourcesSection() {
         <section>
           <div className="hud-label mb-2 flex items-center gap-2">
             <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: 999, background: 'var(--color-text-tertiary)' }} />
-            Available Â· {notConnected.length}
+            Available · {notConnected.length}
           </div>
           <div className="grid grid-cols-2 gap-2">
           {notConnected.map((c) => {
@@ -892,7 +895,7 @@ function DataSourcesSection() {
                     </div>
                   </div>
                   <span style={{ color: 'var(--color-text-secondary)', fontSize: 12, fontWeight: 500 }}>
-                    {isExpanded ? 'Ã— Close' : '+ Add'}
+                    {isExpanded ? '× Close' : '+ Add'}
                   </span>
                 </div>
 
@@ -1053,7 +1056,7 @@ const MESSAGING_CHANNELS: MessagingChannelConfig[] = [
   },
 ];
 
-// SendBlue wizard â€” simplified for standalone page
+// SendBlue wizard — simplified for standalone page
 function SendBlueSection({
   agentId,
   binding,
@@ -1142,7 +1145,7 @@ function SendBlueSection({
     boxSizing: 'border-box',
   };
 
-  // Not active â€” setup wizard
+  // Not active — setup wizard
   const steps = [
     {
       title: 'Get SendBlue API keys',
@@ -1253,7 +1256,7 @@ function SendBlueSection({
           </div>
         </div>
       ),
-      canAdvance: true, // webhook is optional â€” user can skip
+      canAdvance: true, // webhook is optional — user can skip
     },
   ];
 
@@ -1843,7 +1846,7 @@ function MemorySection() {
         )}
       </div>
 
-      {/* Add to Memory â€” two-column grid */}
+      {/* Add to Memory — two-column grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Index folder */}
         <div
@@ -2066,4 +2069,8 @@ export function DataSourcesPage() {
     </div>
   );
 }
+
+
+
+
 

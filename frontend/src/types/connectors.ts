@@ -1,4 +1,4 @@
-﻿export interface SetupStep {
+export interface SetupStep {
   label: string;
   url?: string;
   urlLabel?: string;
@@ -12,7 +12,7 @@ export interface ConnectorMeta {
   icon: string;
   color: string;
   description: string;
-  unitLabel?: string;  // "emails", "messages", "meeting notes", "pages", "notes", etc.
+  unitLabel?: string;
   steps?: SetupStep[];
   troubleshooting?: string[];
   inputFields?: Array<{
@@ -36,12 +36,7 @@ export interface SyncStatus {
   state: "idle" | "syncing" | "paused" | "error";
   items_synced: number;
   items_total: number;
-  /** Items processed in the current (or most recent) run only. `null`
-   *  when no sync has been triggered through this server session yet. */
   new_items_synced?: number | null;
-  /** ISO 8601 timestamp of the oldest indexed item, used to label how far
-   *  back the corpus reaches ("past 3 months", "past 5 years"). `null`
-   *  before anything is indexed. */
   oldest_item_date?: string | null;
   last_sync: string | null;
   error: string | null;
@@ -53,13 +48,10 @@ export interface ConnectRequest {
   code?: string;
   email?: string;
   password?: string;
+  clientId?: string;
+  clientSecret?: string;
 }
 
-/** Response from POST /v1/connectors/{id}/connect.
- *  For OAuth connectors, pasting a Client ID / Secret pair only registers the
- *  app credentials; the backend returns `status: "oauth_required"` plus an
- *  `oauth_start` path the UI must open to run the browser consent flow that
- *  actually mints an access token (see issue #512). */
 export interface ConnectResponse {
   connector_id: string;
   connected: boolean;
@@ -69,14 +61,11 @@ export interface ConnectResponse {
 }
 
 export type WizardStep = "pick" | "connect" | "ingest" | "ready";
-
-// Backward-compatible alias
 export type SourceCard = ConnectorMeta;
-
 export type ConnectorCategory = ConnectorMeta['category'];
 
 export const SOURCE_CATALOG: ConnectorMeta[] = [
-  // ── Upload / Paste ─────────────────────────────────────────────────
+  // ── Upload / Paste ──────────────────────────────────────────────────
   {
     connector_id: 'upload',
     display_name: 'Upload / Paste',
@@ -91,11 +80,9 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     ],
     inputFields: [],
   },
-  // ── Communication ──────────────────────────────────────────────────
+
+  // ── Gmail ────────────────────────────────────────────────────────────
   {
-    // Unified Gmail card. Defaults to the IMAP (app-password) flow because
-    // it needs no Google Cloud setup; the OAuth path is offered as an
-    // "Advanced" disclosure rendered in DataSourcesPage.
     connector_id: 'gmail_imap',
     display_name: 'Gmail',
     auth_type: 'oauth',
@@ -106,7 +93,7 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     unitLabel: 'emails',
     steps: [
       {
-        label: 'Make sure 2-Step Verification is enabled, then generate a 16-character App Password (Mail / Other / "OpenTron"). Paste it below \u2014 spaces are fine, and use the app password, not your regular Gmail password.',
+        label: 'Make sure 2-Step Verification is enabled, then generate a 16-character App Password (Mail / Other / "OpenTron"). Paste it below \u2014 use the app password, not your regular Gmail password.',
         url: 'https://myaccount.google.com/apppasswords',
         urlLabel: 'How to get an app password \u2192',
       },
@@ -116,10 +103,12 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
       "Google Workspace user? Your admin may need to enable App Passwords for your organization.",
     ],
     inputFields: [
-      { name: 'email', placeholder: 'you@gmail.com', type: 'text' },
-      { name: 'password', placeholder: 'App password (xxxx xxxx xxxx xxxx)', type: 'password' },
+      { name: 'email',    placeholder: 'you@gmail.com',                          type: 'text'     },
+      { name: 'password', placeholder: 'App password (xxxx xxxx xxxx xxxx)',      type: 'password' },
     ],
   },
+
+  // ── Slack ────────────────────────────────────────────────────────────
   {
     connector_id: 'slack',
     display_name: 'Slack',
@@ -131,32 +120,26 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     unitLabel: 'messages',
     steps: [
       {
-        label: 'Go to api.slack.com/apps and click "Create New App" → choose "From scratch". Name it "OpenTron" and pick your workspace',
+        label: 'Go to api.slack.com/apps and click "Create New App" \u2192 choose "From scratch". Name it "OpenTron" and pick your workspace',
         url: 'https://api.slack.com/apps',
         urlLabel: 'Open Slack Apps',
       },
       {
-        label: 'In the left sidebar, click "OAuth & Permissions". Scroll down to "User Token Scopes" (NOT "Bot Token Scopes"). Click "Add an OAuth Scope" and add EACH of these scopes one by one:',
+        label: 'In the left sidebar, click "OAuth & Permissions". Scroll down to "User Token Scopes" (NOT "Bot Token Scopes"). Add each scope: channels:history, channels:read, groups:history, groups:read, im:history, im:read, mpim:history, mpim:read, users:read',
       },
       {
-        label: 'channels:history • channels:read • groups:history • groups:read • im:history • im:read • mpim:history • mpim:read • users:read',
+        label: 'Click "Install App" \u2192 "Install to Workspace" \u2192 "Allow". Copy the "User OAuth Token" (starts with xoxp-, NOT xoxb-)',
       },
       {
-        label: 'In the left sidebar, click "Install App" → click "Install to Workspace" → click "Allow". After installing, copy the "User OAuth Token" that appears (starts with xoxp-, NOT xoxb-)',
-      },
-      {
-        label: 'Paste the user token below. Sync indexes every channel, private channel, DM, and group DM you have access to — no need to invite anything to channels',
-      },
-      {
-        label: '(Optional) Set the app icon: in the left sidebar click "Basic Information" → scroll to "Display Information" → upload the OpenTron logo',
-        url: 'https://github.com/open-Tron/OpenTron/blob/main/assets/OpenTron-slack-icon.jpg',
-        urlLabel: 'Download icon',
+        label: 'Paste the user token below.',
       },
     ],
     inputFields: [
       { name: 'token', placeholder: 'xoxp-...', type: 'password' },
     ],
   },
+
+  // ── Notion ───────────────────────────────────────────────────────────
   {
     connector_id: 'notion',
     display_name: 'Notion',
@@ -168,24 +151,23 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     unitLabel: 'pages',
     steps: [
       {
-        label: 'Go to notion.so/profile/integrations → click "+ New integration". Name it "OpenTron", select your workspace, and click Submit',
+        label: 'Go to notion.so/profile/integrations \u2192 click "+ New integration". Name it "OpenTron", select your workspace, and click Submit.',
         url: 'https://www.notion.so/profile/integrations',
         urlLabel: 'Open Notion Integrations',
       },
       {
-        label: 'Copy the "Internal Integration Secret" (starts with ntn_) and paste it below',
+        label: 'Copy the "Internal Integration Secret" (starts with ntn_) and paste it below.',
       },
       {
-        label: 'To share ALL your pages at once: open any top-level page → click "..." (top right) → "Connections" → "Add connections" → search "OpenTron" → click it. This shares the page and all its sub-pages. Repeat for each top-level page, or share your entire workspace by doing this on every root page',
-      },
-      {
-        label: 'Tip: if you have a single top-level page that contains everything, sharing just that one page will share all nested sub-pages automatically',
+        label: 'Share pages: open any top-level page \u2192 click "..." (top right) \u2192 "Connections" \u2192 "Add connections" \u2192 search "OpenTron". This shares the page and all sub-pages.',
       },
     ],
     inputFields: [
       { name: 'token', placeholder: 'ntn_...', type: 'password' },
     ],
   },
+
+  // ── Granola ──────────────────────────────────────────────────────────
   {
     connector_id: 'granola',
     display_name: 'Granola',
@@ -196,13 +178,15 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     description: 'AI meeting notes',
     unitLabel: 'meeting notes',
     steps: [
-      { label: 'Open the Granola desktop app. Click the gear icon (Settings) in the bottom-left corner, then click "API"' },
-      { label: 'Click "Generate API Key" (or copy your existing key). Paste the key below' },
+      { label: 'Open the Granola desktop app. Click the gear icon (Settings) in the bottom-left corner, then click "API".' },
+      { label: 'Click "Generate API Key" (or copy your existing key). Paste the key below.' },
     ],
     inputFields: [
       { name: 'token', placeholder: 'grn_...', type: 'password' },
     ],
   },
+
+  // ── iMessage ─────────────────────────────────────────────────────────
   {
     connector_id: 'imessage',
     display_name: 'iMessage',
@@ -214,17 +198,18 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     unitLabel: 'messages',
     steps: [
       {
-        label: 'Open the Apple menu () → System Settings → Privacy & Security (in the left sidebar) → scroll down and click "Full Disk Access"',
+        label: 'Open System Settings \u2192 Privacy & Security \u2192 Full Disk Access.',
       },
       {
-        label: 'Click the "+" button at the bottom of the list. Navigate to Applications → Utilities → select "Terminal.app" (or iTerm2/Warp if you use those). If you\'re using the desktop app, also add "OpenTron.app" from Applications',
+        label: 'Click "+" and add Terminal.app (or your terminal). If using the desktop app, also add OpenTron.app.',
       },
       {
-        label: 'Toggle the switch ON next to each app you added. Close and reopen your terminal (or restart OpenTron). iMessage data will be detected automatically — no credentials needed',
+        label: 'Toggle the switch ON. Restart your terminal or OpenTron. iMessage is detected automatically \u2014 no credentials needed.',
       },
     ],
   },
-  // ── Documents ──────────────────────────────────────────────────────
+
+  // ── Obsidian ─────────────────────────────────────────────────────────
   {
     connector_id: 'obsidian',
     display_name: 'Obsidian',
@@ -236,19 +221,18 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     unitLabel: 'notes',
     steps: [
       {
-        label: 'Find your vault path: open Obsidian → click the vault name in the bottom-left corner → "Manage Vaults" → look at the path shown under your vault name. On macOS this is usually ~/Documents/MyVault or ~/Library/Mobile Documents/iCloud~md~obsidian/Documents/MyVault',
+        label: 'Find your vault path: open Obsidian \u2192 click the vault name (bottom-left) \u2192 "Manage Vaults". On macOS it is usually ~/Documents/MyVault.',
       },
       {
-        label: 'Alternatively, open Finder → navigate to your vault folder (it contains a hidden .obsidian directory). Right-click the folder → "Copy as Pathname" to get the full path',
-      },
-      {
-        label: 'Paste the full path below. OpenTron will index all .md files in the vault',
+        label: 'Paste the full path below. OpenTron will index all .md files in the vault.',
       },
     ],
     inputFields: [
       { name: 'path', placeholder: '/Users/you/Documents/MyVault', type: 'text' },
     ],
   },
+
+  // ── Google Drive ─────────────────────────────────────────────────────
   {
     connector_id: 'gdrive',
     display_name: 'Google Drive',
@@ -260,30 +244,31 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     unitLabel: 'files',
     steps: [
       {
-        label: 'Go to Google Cloud Console → create a new project (or select an existing one). Give it any name (e.g. "OpenTron")',
+        label: 'Go to Google Cloud Console \u2192 create a new project (or select an existing one).',
         url: 'https://console.cloud.google.com/projectcreate',
         urlLabel: 'Create Project',
       },
       {
-        label: 'Enable the Google Drive API: click the link below, make sure your project is selected at the top, then click "Enable"',
+        label: 'Enable the Google Drive API.',
         url: 'https://console.cloud.google.com/apis/library/drive.googleapis.com',
         urlLabel: 'Enable Drive API',
       },
       {
-        label: 'Create OAuth credentials: go to Credentials (link below) → click "+ Create Credentials" → choose "OAuth client ID" → Application type: "Web application". Under "Authorized redirect URIs" add this server\'s callback (e.g. http://localhost:1313/v1/connectors/gdrive/oauth/callback — match the host/port your OpenTron server is bound to) → click "Create".',
+        label: 'Go to Credentials \u2192 "+ Create Credentials" \u2192 "OAuth client ID" \u2192 Application type: "Web application". Under "Authorized redirect URIs" add exactly: http://localhost:8000/v1/connectors/gdrive/oauth/callback \u2192 click "Create".',
         url: 'https://console.cloud.google.com/apis/credentials',
         urlLabel: 'Open Credentials',
       },
       {
-        label: 'A dialog will show your Client ID and Client Secret. Copy both and paste them below, then click Connect — a Google sign-in window opens to finish authorization. (If you miss the dialog, click the download icon next to your OAuth client to see them again.)',
+        label: 'Copy the Client ID and Client Secret from the dialog (or the download icon). Paste them below and click Connect \u2014 a Google sign-in window will open.',
       },
     ],
     inputFields: [
-      { name: 'email', placeholder: 'Client ID (e.g. 123456-abc.apps.googleusercontent.com)', type: 'text' },
-      { name: 'password', placeholder: 'Client Secret', type: 'password' },
+      { name: 'clientId',     placeholder: 'Client ID',     type: 'text'     },
+      { name: 'clientSecret', placeholder: 'Client Secret', type: 'password' },
     ],
   },
-  // ── PIM (Calendar, Contacts) ───────────────────────────────────────
+
+  // ── Google Calendar ──────────────────────────────────────────────────
   {
     connector_id: 'gcalendar',
     display_name: 'Google Calendar',
@@ -295,29 +280,31 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     unitLabel: 'events',
     steps: [
       {
-        label: 'Go to Google Cloud Console → use the same project as Google Drive (or create a new one)',
+        label: 'Go to Google Cloud Console \u2192 use the same project as Google Drive (or create a new one).',
         url: 'https://console.cloud.google.com/projectcreate',
         urlLabel: 'Open Console',
       },
       {
-        label: 'Enable the Google Calendar API: click the link below, select your project, then click "Enable"',
+        label: 'Enable the Google Calendar API.',
         url: 'https://console.cloud.google.com/apis/library/calendar-json.googleapis.com',
         urlLabel: 'Enable Calendar API',
       },
       {
-        label: 'Go to Credentials → "+ Create Credentials" → "OAuth client ID" → Application type: "Desktop app" → "Create". Copy the Client ID and Client Secret',
+        label: 'Go to Credentials \u2192 "+ Create Credentials" \u2192 "OAuth client ID" \u2192 Application type: "Web application". Under "Authorized redirect URIs" add: http://localhost:8000/v1/connectors/gcalendar/oauth/callback \u2192 click "Create". You can reuse the same OAuth client as Google Drive by adding this URI to the existing client.',
         url: 'https://console.cloud.google.com/apis/credentials',
         urlLabel: 'Open Credentials',
       },
       {
-        label: 'Paste the Client ID and Client Secret below (you can reuse the same OAuth client as Google Drive if you enabled both APIs in the same project)',
+        label: 'Paste the Client ID and Client Secret below.',
       },
     ],
     inputFields: [
-      { name: 'email', placeholder: 'Client ID', type: 'text' },
-      { name: 'password', placeholder: 'Client Secret', type: 'password' },
+      { name: 'clientId',     placeholder: 'Client ID',     type: 'text'     },
+      { name: 'clientSecret', placeholder: 'Client Secret', type: 'password' },
     ],
   },
+
+  // ── Google Contacts ──────────────────────────────────────────────────
   {
     connector_id: 'gcontacts',
     display_name: 'Google Contacts',
@@ -329,29 +316,31 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     unitLabel: 'contacts',
     steps: [
       {
-        label: 'Go to Google Cloud Console → use the same project as Google Drive (or create a new one)',
+        label: 'Go to Google Cloud Console \u2192 use the same project as Google Drive (or create a new one).',
         url: 'https://console.cloud.google.com/projectcreate',
         urlLabel: 'Open Console',
       },
       {
-        label: 'Enable the People API: click the link below, select your project, then click "Enable"',
+        label: 'Enable the People API.',
         url: 'https://console.cloud.google.com/apis/library/people.googleapis.com',
         urlLabel: 'Enable People API',
       },
       {
-        label: 'Go to Credentials → "+ Create Credentials" → "OAuth client ID" → Application type: "Desktop app" → "Create". Copy the Client ID and Client Secret',
+        label: 'Go to Credentials \u2192 "+ Create Credentials" \u2192 "OAuth client ID" \u2192 Application type: "Web application". Under "Authorized redirect URIs" add: http://localhost:8000/v1/connectors/gcontacts/oauth/callback \u2192 click "Create".',
         url: 'https://console.cloud.google.com/apis/credentials',
         urlLabel: 'Open Credentials',
       },
       {
-        label: 'Paste the Client ID and Client Secret below',
+        label: 'Paste the Client ID and Client Secret below.',
       },
     ],
     inputFields: [
-      { name: 'email', placeholder: 'Client ID', type: 'text' },
-      { name: 'password', placeholder: 'Client Secret', type: 'password' },
+      { name: 'clientId',     placeholder: 'Client ID',     type: 'text'     },
+      { name: 'clientSecret', placeholder: 'Client Secret', type: 'password' },
     ],
   },
+
+  // ── Apple Notes ──────────────────────────────────────────────────────
   {
     connector_id: 'apple_notes',
     display_name: 'Apple Notes',
@@ -362,17 +351,13 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     description: 'macOS Notes app',
     unitLabel: 'notes',
     steps: [
-      {
-        label: 'Open the Apple menu () → System Settings → Privacy & Security (in the left sidebar) → scroll down and click "Full Disk Access"',
-      },
-      {
-        label: 'Click the "+" button at the bottom of the list. Navigate to Applications → Utilities → select "Terminal.app" (or iTerm2/Warp if you use those). If you\'re using the desktop app, also add "OpenTron.app" from Applications',
-      },
-      {
-        label: 'Toggle the switch ON next to each app you added. Close and reopen your terminal (or restart OpenTron). Apple Notes will be detected automatically — no credentials needed',
-      },
+      { label: 'Open System Settings \u2192 Privacy & Security \u2192 Full Disk Access.' },
+      { label: 'Click "+" and add Terminal.app. If using the desktop app, also add OpenTron.app.' },
+      { label: 'Toggle the switch ON and restart. Apple Notes will be detected automatically \u2014 no credentials needed.' },
     ],
   },
+
+  // ── Apple Contacts ───────────────────────────────────────────────────
   {
     connector_id: 'apple_contacts',
     display_name: 'Apple Contacts',
@@ -383,17 +368,13 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     description: 'macOS Contacts app',
     unitLabel: 'contacts',
     steps: [
-      {
-        label: 'Open the Apple menu () → System Settings → Privacy & Security (in the left sidebar) → scroll down and click "Full Disk Access"',
-      },
-      {
-        label: 'Click the "+" button at the bottom of the list. Navigate to Applications → Utilities → select "Terminal.app" (or iTerm2/Warp if you use those). If you\'re using the desktop app, also add "OpenTron.app" from Applications',
-      },
-      {
-        label: 'Toggle the switch ON next to each app you added. Close and reopen your terminal (or restart OpenTron). Apple Contacts will be detected automatically — no credentials needed',
-      },
+      { label: 'Open System Settings \u2192 Privacy & Security \u2192 Full Disk Access.' },
+      { label: 'Click "+" and add Terminal.app. If using the desktop app, also add OpenTron.app.' },
+      { label: 'Toggle the switch ON and restart. Apple Contacts will be detected automatically \u2014 no credentials needed.' },
     ],
   },
+
+  // ── Outlook ──────────────────────────────────────────────────────────
   {
     connector_id: 'outlook',
     display_name: 'Outlook',
@@ -405,25 +386,30 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     unitLabel: 'emails',
     steps: [
       {
-        label: 'Go to the Azure Portal → App Registrations → click "+ New registration". Name it "OpenTron", select "Accounts in this organizational directory only", and click Register',
+        label: 'Go to Azure Portal \u2192 App Registrations \u2192 click "+ New registration". Name it "OpenTron", select "Accounts in any organizational directory and personal Microsoft accounts", and click Register.',
         url: 'https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade',
         urlLabel: 'Open Azure App Registrations',
       },
       {
-        label: 'In the left sidebar, click "API Permissions" → "Add a permission" → "Microsoft Graph" → "Delegated permissions" → search and check "Mail.Read" → click "Add permissions"',
+        label: 'In the left sidebar, click "Authentication" \u2192 "Add a platform" \u2192 "Web". Under "Redirect URIs" add exactly: http://localhost:8000/v1/connectors/outlook/oauth/callback \u2192 click "Configure".',
       },
       {
-        label: 'In the left sidebar, click "Certificates & secrets" → "New client secret" → set a description and expiry → click "Add" → immediately copy the "Value" (you won\'t see it again)',
+        label: 'Click "API Permissions" \u2192 "Add a permission" \u2192 "Microsoft Graph" \u2192 "Delegated" \u2192 add Mail.Read and Calendars.Read.',
       },
       {
-        label: 'Go to "Overview" in the left sidebar and copy the "Application (client) ID". Paste both the Client ID and the Client Secret below',
+        label: 'Click "Certificates & secrets" \u2192 "New client secret" \u2192 set expiry \u2192 copy the Value immediately.',
+      },
+      {
+        label: 'Go to "Overview" and copy the Application (client) ID. Paste both below.',
       },
     ],
     inputFields: [
-      { name: 'email', placeholder: 'Application (client) ID', type: 'text' },
-      { name: 'password', placeholder: 'Client Secret Value', type: 'password' },
+      { name: 'clientId',     placeholder: 'Application (client) ID', type: 'text'     },
+      { name: 'clientSecret', placeholder: 'Client Secret Value',      type: 'password' },
     ],
   },
+
+  // ── Dropbox ──────────────────────────────────────────────────────────
   {
     connector_id: 'dropbox',
     display_name: 'Dropbox',
@@ -435,21 +421,27 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     unitLabel: 'files',
     steps: [
       {
-        label: 'Go to the Dropbox App Console and click "Create app". Choose "Scoped access" → "Full Dropbox" → give it a name (e.g. "OpenTron") → click "Create app"',
+        label: 'Go to Dropbox App Console \u2192 "Create app" \u2192 "Scoped access" \u2192 "Full Dropbox". Give it a name and click "Create app".',
         url: 'https://www.dropbox.com/developers/apps/create',
         urlLabel: 'Open Dropbox App Console',
       },
       {
-        label: 'Click the "Permissions" tab at the top. Check "files.metadata.read" and "files.content.read" → click "Submit" at the bottom to save',
+        label: 'In the "Settings" tab, under "OAuth 2" \u2192 "Redirect URIs" add exactly: http://localhost:8000/v1/connectors/dropbox/oauth/callback \u2192 click "Add".',
       },
       {
-        label: 'Go back to the "Settings" tab. Under "OAuth 2", find "Generated access token" and click "Generate". Copy the token and paste it below',
+        label: 'Click the "Permissions" tab. Check "files.metadata.read" and "files.content.read" \u2192 click "Submit".',
+      },
+      {
+        label: 'Go back to "Settings". Copy the App key (Client ID) and App secret (Client Secret). Paste them below.',
       },
     ],
     inputFields: [
-      { name: 'token', placeholder: 'Access token (sl.u...)', type: 'password' },
+      { name: 'clientId',     placeholder: 'App key (Client ID)',      type: 'text'     },
+      { name: 'clientSecret', placeholder: 'App secret (Client Secret)', type: 'password' },
     ],
   },
+
+  // ── WhatsApp ─────────────────────────────────────────────────────────
   {
     connector_id: 'whatsapp',
     display_name: 'WhatsApp',
@@ -461,20 +453,19 @@ export const SOURCE_CATALOG: ConnectorMeta[] = [
     unitLabel: 'messages',
     steps: [
       {
-        label: 'Go to Meta for Developers → click "Create App" → choose "Business" type → fill in your app details and click "Create App"',
+        label: 'Go to Meta for Developers \u2192 "Create App" \u2192 "Business" type.',
         url: 'https://developers.facebook.com/apps/',
         urlLabel: 'Open Meta Developer Portal',
       },
       {
-        label: 'On the app dashboard, find "WhatsApp" and click "Set up". Follow the prompts to add a WhatsApp test number. Go to "API Setup" and copy the temporary access token',
+        label: 'On the dashboard, find "WhatsApp" \u2192 "Set up". Add a test number and go to "API Setup". Copy the temporary access token.',
       },
       {
-        label: 'Copy your "Phone Number ID" (shown on the API Setup page) and the access token. Paste them below separated by a colon — e.g. 123456789:EAABx...',
+        label: 'Copy your Phone Number ID and the access token. Paste them below as: PhoneNumberID:AccessToken',
       },
     ],
     inputFields: [
-      { name: 'token', placeholder: 'Phone Number ID:Access Token', type: 'password' },
+      { name: 'token', placeholder: 'PhoneNumberID:AccessToken', type: 'password' },
     ],
   },
 ];
-
