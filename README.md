@@ -1,3 +1,6 @@
+<head>
+  <link rel="canonical" href="https://open-tron-ai.github.io/OpenTron/" />
+</head>  
 <div align="center">
   <img alt="OpenTron" src="assets/OpenTron_Horizontal_Logo.png" width="400">
   <p><i>Personal AI, On Personal Devices.</i></p>
