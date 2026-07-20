@@ -1,0 +1,126 @@
+<svg width="1400" height="700" viewBox="0 0 1400 700"
+     xmlns="http://www.w3.org/2000/svg">
+
+<defs>
+
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#0f172a"/>
+<stop offset="100%" stop-color="#111827"/>
+</linearGradient>
+
+<filter id="shadow">
+<feDropShadow dx="0" dy="8" stdDeviation="10" flood-opacity="0.25"/>
+</filter>
+
+<marker id="arrowRed" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+<path d="M0,0 L12,6 L0,12 Z" fill="#ef4444"/>
+</marker>
+
+<marker id="arrowGreen" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+<path d="M0,0 L12,6 L0,12 Z" fill="#10b981"/>
+</marker>
+
+</defs>
+
+<rect width="100%" height="100%" fill="url(#bg)"/>
+
+<text x="700" y="60"
+text-anchor="middle"
+fill="white"
+font-size="34"
+font-family="Segoe UI">
+Economic Architecture Comparison
+</text>
+
+<text x="700" y="115"
+text-anchor="middle"
+fill="#94a3b8"
+font-size="18">
+Infrastructure Expansion vs Resource Saturation
+</text>
+
+<!-- Python -->
+
+<text x="260" y="180"
+      text-anchor="middle"
+      fill="#f87171"
+      font-size="28">
+Python Agent Stack
+</text>
+
+<rect x="60" y="260" width="240" height="90" rx="16" fill="#451a1a"/>
+<rect x="380" y="260" width="240" height="90" rx="16" fill="#451a1a"/>
+<rect x="700" y="260" width="240" height="90" rx="16" fill="#451a1a"/>
+<rect x="1020" y="260" width="260" height="90" rx="16" fill="#7f1d1d"/>
+
+<text x="180" y="315" fill="white" text-anchor="middle" font-size="18">
+Memory Bloat
+</text>
+
+<text x="500" y="315" fill="white" text-anchor="middle" font-size="18">
+CPU Overhead
+</text>
+
+<text x="820" y="315" fill="white" text-anchor="middle" font-size="18">
+Process Desync
+</text>
+
+<text x="1150" y="315" fill="white" text-anchor="middle" font-size="18">
+$500+/month Scaling
+</text>
+
+<line x1="300" y1="305" x2="380" y2="305"
+stroke="#ef4444" stroke-width="4"
+marker-end="url(#arrowRed)"/>
+
+<line x1="620" y1="305" x2="700" y2="305"
+stroke="#ef4444" stroke-width="4"
+marker-end="url(#arrowRed)"/>
+
+<line x1="940" y1="305" x2="1020" y2="305"
+stroke="#ef4444" stroke-width="4"
+marker-end="url(#arrowRed)"/>
+
+<!-- OpenTron -->
+
+<text x="260" y="500"
+      text-anchor="middle"
+      fill="#34d399"
+      font-size="28">
+OpenTron JVM Stack
+</text>
+
+<rect x="60" y="540" width="240" height="90" rx="16" fill="#052e2b"/>
+<rect x="380" y="540" width="240" height="90" rx="16" fill="#052e2b"/>
+<rect x="700" y="540" width="240" height="90" rx="16" fill="#052e2b"/>
+<rect x="1020" y="540" width="260" height="90" rx="16" fill="#065f46"/>
+
+<text x="180" y="595" fill="white" text-anchor="middle" font-size="18">
+10k+ Virtual Threads
+</text>
+
+<text x="500" y="595" fill="white" text-anchor="middle" font-size="18">
+Zero-Waste I/O
+</text>
+
+<text x="820" y="595" fill="white" text-anchor="middle" font-size="18">
+Shared Runtime
+</text>
+
+<text x="1150" y="595" fill="white" text-anchor="middle" font-size="18">
+Sub-$100 Operation
+</text>
+
+<line x1="300" y1="585" x2="380" y2="585"
+stroke="#10b981" stroke-width="4"
+marker-end="url(#arrowGreen)"/>
+
+<line x1="620" y1="585" x2="700" y2="585"
+stroke="#10b981" stroke-width="4"
+marker-end="url(#arrowGreen)"/>
+
+<line x1="940" y1="585" x2="1020" y2="585"
+stroke="#10b981" stroke-width="4"
+marker-end="url(#arrowGreen)"/>
+
+</svg>
