@@ -6,7 +6,7 @@
     width="450">
 </p>
 
-<h3 align="center"><p>Personal AI, On Personal Devices.: <em>How We Built a High-Density AI Agent Engine
+<h3 align="center"><p>Personal AI, On Personal Device</p> <p><em>How We Built a High-Density AI Agent Engine
     on a $1000 Budget While Silicon Valley Burns Millions
   </em>
 </p>
