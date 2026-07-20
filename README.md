@@ -14,8 +14,6 @@
 
 ---
 
-We are independent software engineers from Eastern Europe.
-
 We didn't have a multi-million dollar venture capital check, a corporate credit card to throw at AWS, or a team of 50 developers.
 
 What we had was a $1000 server budget and a refusal to accept the sloppy, unoptimized engineering choices that have taken over modern AI backend development.
