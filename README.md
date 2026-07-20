@@ -29,8 +29,11 @@ This document explains the architecture, design rationale, and benchmarks behind
 
 OpenTron shifts multi-agent workflows from fragile prototyping to deterministic operation using a decoupled, highly concurrent architecture.
 
+
 <p align="center">
-  assets/architecture-overview.svg
+  <img
+    src="assets/architecture-overview.svg"
+  >
 </p>
 
 ---
@@ -65,9 +68,10 @@ we achieve massive concurrency while keeping operational complexity low.
 # 💰 Economic Reality: Hardware Saturation vs Infrastructure Expansion
 
 <p align="center">
-  assets/economic-comparison.svg
+  <img
+    src="assets/economic-comparison.svg"
+  >
 </p>
-
 ---
 
 ### 📉 Cost & Performance Architecture Comparison
