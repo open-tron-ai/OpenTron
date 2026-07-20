@@ -1,4 +1,4 @@
-// Production Java serve backend launcher - delegates to Spring Boot backend application
+// Production Java serve backend launcher - delegates to Spring Boot backend application.
 package io.opentron.cli;
 
 import org.springframework.boot.SpringApplication;
