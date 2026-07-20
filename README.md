@@ -6,10 +6,11 @@
     width="450">
 </p>
 
-<h3 align="center">Personal AI, On Personal Devices.</n: How We Built a High-Density AI Agent Engine
+<h3 align="center"><p>Personal AI, On Personal Devices.: <em>How We Built a High-Density AI Agent Engine
     on a $1000 Budget While Silicon Valley Burns Millions
   </em>
 </p>
+</h3>
 
 ---
 
@@ -72,7 +73,7 @@ we achieve massive concurrency while keeping operational complexity low.
     src="assets/economic-comparison.svg"
   >
 </p>
----
+
 
 ### 📉 Cost & Performance Architecture Comparison
 
