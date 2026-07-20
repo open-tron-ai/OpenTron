@@ -87,4 +87,10 @@ we achieve massive concurrency while keeping operational complexity low.
 
 ## 📄 License
 
-This project is licensed under the Apache-2.0 license.
+This repository is source-available.
+
+The code is publicly visible for evaluation and review purposes only.
+
+No rights are granted to use, modify, distribute, or commercialize
+this software without explicit written permission from the author.
+
