@@ -3,7 +3,7 @@
 </head>  
 <div align="center">
   <img alt="OpenTron" src="assets/OpenTron_Horizontal_Logo.png" width="400">
-  <p><i>Personal AI, On Personal Devices.</i></p>
+  <p><i>Personal AI, On Personal Devices. </i></p>
 </div>
 
 ---
