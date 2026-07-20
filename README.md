@@ -1,111 +1,72 @@
-<div align="center">
-  <img alt="OpenTron Logo" src="assets/OpenTron_Horizontal_Logo.png" width="400">
-  <br>
-  <strong>Personal AI, On Personal Devices.</strong>
-  <p><i>Architecture Breakdown: How We Built a High-Density AI Agent Engine on a $1000 Budget While Silicon Valley Burns Millions</i></p>
-</div>
+
+<p align="center">
+  <img
+    src="assets/OpenTron_Horizontal_Logo.png"
+    alt="OpenTron Logo"
+    width="450">
+</p>
+
+<h3 align="center">Personal AI, On Personal Devices.</n: How We Built a High-Density AI Agent Engine
+    on a $1000 Budget While Silicon Valley Burns Millions
+  </em>
+</p>
 
 ---
 
-We are independent software engineers from Eastern Europe. We didn’t have a multi-million dollar venture capital check, a corporate credit card to throw at AWS, or a team of 50 developers. 
+We are independent software engineers from Eastern Europe.
 
-What we had was a $1000 server budget and a refusal to accept the sloppy, unoptimized engineering choices that have taken over modern AI backend development. 
+We didn't have a multi-million dollar venture capital check, a corporate credit card to throw at AWS, or a team of 50 developers.
 
-While elite tech spaces are pushing copy-paste Python scripts wrapped in infinite layers of cloud infrastructure to run multi-agent systems, we built **OpenTron**: a production-grade, highly concurrent, stateful AI multi-agent architecture running natively on Java 21, Spring Boot, and PostgreSQL.
+What we had was a $1000 server budget and a refusal to accept the sloppy, unoptimized engineering choices that have taken over modern AI backend development.
 
-Here is the exact data, the technical reasoning, and the benchmarks of how we out-engineered the cloud-hype machine for pennies.
+While elite tech spaces are pushing copy-paste Python scripts wrapped in layers of cloud infrastructure to run multi-agent systems, we built **OpenTron**: a production-grade, highly concurrent, stateful AI multi-agent architecture running natively on **Java 21**, **Spring Boot**, and **PostgreSQL**.
+
+This document explains the architecture, design rationale, and benchmarks behind the system.
 
 ---
 
-## 🏗️ Architecture & Core Mechanics
+# 🏗️ Architecture & Core Mechanics
 
 OpenTron shifts multi-agent workflows from fragile prototyping to deterministic operation using a decoupled, highly concurrent architecture.
 
-```mermaid
-graph TD
-    %% Styling Definition
-    classDef frontend fill:#1f2937,stroke:#3b82f6,stroke-width:2px,color:#fff;
-    classDef engine fill:#1f2937,stroke:#10b981,stroke-width:2px,color:#fff;
-    classDef data fill:#1f2937,stroke:#8b5cf6,stroke-width:2px,color:#fff;
-
-    %% Nodes
-    A[Frontend Shell<br>React + Tauri] -->|WebSockets / REST| B
-    
-    subgraph Engine [OpenTron Orchestrator: Java 21 Engine]
-        B[🧵 10k+ Virtual Threads]
-        C[🛡️ Sandbox Execution Environment]
-        D[🤖 Schema-Driven Protocols]
-        E[⏱️ Automated Regression Gatekeeper]
-    end
-
-    Engine --> F
-
-    subgraph DB [Data Layer: Flyway Migrations / Dual-Engine]
-        F[💾 Embedded Profile: H2 File]
-        G[🚀 Production Profile: Postgres]
-    end
-
-    %% Class Assignment
-    class A frontend;
-    class B,C,D,E engine;
-    class F,G data;
-```
+<p align="center">
+  assets/architecture-overview.svg
+</p>
 
 ---
 
-### 1. The Core Flaw of the Mainstream AI Hype Stack
+## 1. The Core Flaw of the Mainstream AI Hype Stack
 
-The current industry trend is to build AI agents using Python runtimes (like FastAPI). When these applications are moved into production to handle long-running, asynchronous agent loops, they hit a massive architectural wall:
+The current trend is to build AI agents with Python runtimes such as FastAPI.
 
-* **The Global Interpreter Lock (GIL) & Process Bloat:** Because Python cannot execute true parallel threads across multiple CPU cores natively, developers are forced to run multiple application worker processes (via Uvicorn/Gunicorn). This multiplies the application’s memory footprint immediately. 
-* **The External Architecture Tax:** To handle long-running background tasks without locking up the web server, they have to string together a messy web of external infrastructure: Redis for message queues, Celery for background workers, and separate broker instances.
-* **The Cloud Premium:** Every added worker process and infrastructure node consumes more RAM and CPU cycles. To keep this fragile setup from crashing under heavy traffic, startups pay an astronomical "lazy tax" to cloud providers, scaling horizontally across dozens of expensive container instances just to buy stability.
+As systems scale into production, several architectural issues emerge:
+
+- **Process Multiplication** – Scaling concurrency often requires additional workers.
+- **Infrastructure Sprawl** – Queues, brokers, schedulers, and worker clusters become mandatory.
+- **Operational Cost Growth** – More infrastructure means more memory, more CPUs, and larger monthly bills.
 
 ---
 
-### 2. The Best-Practice Solution: OpenTron's Architecture
+## 2. OpenTron's Approach
 
-We chose to bypass the entire abstraction layer and build OpenTron directly on the modern JVM. By pairing Java 21’s Virtual Threads with a tightly optimized relational data layer, we removed the need for expensive infrastructure entirely.
+Instead of layering services around runtime limitations, OpenTron is built directly on the modern JVM.
 
-## 💰 The Financial Reality: Hardware Meltdown vs. JVM Efficiency
+By pairing:
 
-Silicon Valley solves concurrency by throwing venture capital at cloud providers. Python-based agent frameworks treat compute hardware as an infinite, free resource—resulting in unoptimized systems that melt down server infrastructure under actual enterprise workloads. OpenTron uses the JVM to extract maximum structural value out of every single dollar spent on bare metal.
+- Java 21 Virtual Threads
+- Spring Boot
+- PostgreSQL
+- Strongly Typed Contracts
 
-### 📊 Asymmetrical Economic Breakdown
+we achieve massive concurrency while keeping operational complexity low.
 
-```mermaid
-flowchart TD
-    %% Python Path (Top)
-    subgraph Python [PYTHON Stack: Hardware Overload 💸]
-        direction LR
-        A1[Memory Bloat:<br>Heavy Process Forks] --> A2[CPU Core Throttling:<br>High System Overhead]
-        A2 --> A3[Process Desync:<br>Fragile State Retention]
-        A3 --> A4[Infrastructure Up-scaling:<br>\$500+/mo Lazy Tax]
-    end
+---
 
-    %% Invisible structural linker to force top-to-bottom layout stacked order
-    A2 ~~~ B2
+# 💰 Economic Reality: Hardware Saturation vs Infrastructure Expansion
 
-    %% OpenTron Path (Bottom)
-    subgraph OpenTron [OPENTRON Stack: Maximum Saturation 👑]
-        direction LR
-        B1[Virtual Threads:<br>10k+ Lightweight Loops] --> B2[Continuous Pipeline:<br>Zero-Waste I/O]
-        B2 --> B3[Thread Sharing:<br>In-Process Consolidation]
-        B3 --> B4[100% Resource Efficiency:<br>Under \$100/mo Budget]
-    end
-
-    %% Modern Native Styling
-    style Python fill:#1a1110,stroke:#f87171,stroke-width:2px
-    style OpenTron fill:#0f1715,stroke:#34d399,stroke-width:2px
-    style A1 fill:#2d1a18,stroke:#ef4444,color:#fff
-    style A2 fill:#2d1a18,stroke:#ef4444,color:#fff
-    style A3 fill:#2d1a18,stroke:#ef4444,color:#fff
-    style A4 fill:#2d1a18,stroke:#ef4444,color:#fff
-    style B1 fill:#062f21,stroke:#10b981,color:#fff
-    style B2 fill:#062f21,stroke:#10b981,color:#fff
-    style B3 fill:#062f21,stroke:#10b981,color:#fff
-    style B4 fill:#062f21,stroke:#10b981,color:#fff
-```
+<p align="center">
+  assets/economic-comparison.svg
+</p>
 
 ---
 
