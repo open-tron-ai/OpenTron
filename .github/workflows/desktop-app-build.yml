@@ -132,17 +132,25 @@ jobs:
           npm run tauri build
         shell: cmd
 
-      - name: Find Installers
+      - name: List Build Output
         run: |
-          echo Searching for installers...
-          dir /s /b frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle | findstr /i ".msi .exe"
+          echo Looking for installers...
+          for /r "frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle" %%F in (*.msi) do echo Found MSI: %%F
+          for /r "frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle" %%F in (*.exe) do echo Found EXE: %%F
         shell: cmd
 
-      - name: Upload Installer
+      - name: Upload MSI Installer
         uses: actions/upload-artifact@v4
         with:
-          name: installer-windows
-          path: frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/
+          name: windows-msi
+          path: frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+          retention-days: 1
+
+      - name: Upload NSIS Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-nsis
+          path: frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
           retention-days: 1
 
   release:
@@ -155,16 +163,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Windows Installer
+      - name: Download MSI
         uses: actions/download-artifact@v4
         with:
-          name: installer-windows
+          name: windows-msi
           path: release
         continue-on-error: true
+
+      - name: Download NSIS
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-nsis
+          path: release
+        continue-on-error: true
+
+      - name: List Release Files
+        run: |
+          ls -la release/
+        shell: bash
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/**
+          files: release/*
           draft: false
-          body: OpenTron v${{ github.ref_name }} - Production desktop app
+          body: |
+            # OpenTron v${{ github.ref_name }}
+            
+            Production-ready desktop application with zero external dependencies.
+            
+            - Windows MSI installer
+            - Windows NSIS portable executable
+            - Includes Java 21 Runtime, Spring Boot backend with H2 database
+            
+            Simply download and run - no installation required.
