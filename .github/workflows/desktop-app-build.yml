@@ -54,6 +54,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'graalvm-community'
+          components: 'native-image'
           cache: maven
           native-image-job-reports: 'true'
 
@@ -81,18 +82,23 @@ jobs:
         if: github.event.inputs.build_native == 'true' || github.event_name == 'push'
         run: |
           cd java/opentron-java/backend
+          # Only attempt native build if we can determine the correct target
           PROFILE="native-$(echo "${{ matrix.os }}-${{ matrix.arch }}" | sed 's/-/_/g')"
-          echo "Building native profile: $PROFILE"
-          mvn -P"$PROFILE" -DskipTests=true clean package 2>&1 | tail -30
+          echo "Attempting native profile: $PROFILE"
+          mvn -P"$PROFILE" -DskipTests=true clean package -q 2>&1 | grep -E "(error|warning|BUILD)" | tail -20
           
-          # Find native binary
-          NATIVE=$(find target -type f \( -name "opentron-backend*" ! -name "*.jar" \) | head -1)
+          # Find native binary (check for all possible output names)
+          NATIVE=$(find target -type f -perm -111 \( -name "opentron-backend*" ! -name "*.jar" \) 2>/dev/null | head -1)
+          if [ -z "$NATIVE" ] && [ "${{ matrix.os }}" = "windows" ]; then
+            NATIVE=$(find target -type f -name "opentron-backend*.exe" 2>/dev/null | head -1)
+          fi
+          
           if [ -f "$NATIVE" ]; then
             SIZE=$(ls -lh "$NATIVE" | awk '{print $5}')
             echo "native_path=$NATIVE" >> $GITHUB_OUTPUT
             echo "✓ Native binary built: $(basename $NATIVE) ($SIZE)"
           else
-            echo "ℹ Native build skipped or failed, will use JAR"
+            echo "ℹ Native build did not produce executable, will use JAR fallback"
           fi
         shell: bash
         id: build_native
@@ -143,11 +149,31 @@ jobs:
           name: backend-${{ matrix.os }}-${{ matrix.arch }}
           path: backend-build
 
-      - name: Inspect Backend
+      - name: Verify Backend Artifacts
         run: |
           echo "=== Backend artifacts ==="
-          ls -lh backend-build/ || echo "No artifacts"
-          file backend-build/* || true
+          JAR=$(find backend-build -name "*.jar" | grep -E "exec" | head -1)
+          if [ -z "$JAR" ]; then
+            JAR=$(find backend-build -name "*.jar" | head -1)
+          fi
+          
+          NATIVE=$(find backend-build -type f \( -name "opentron-backend*" ! -name "*.jar" \) 2>/dev/null | head -1)
+          
+          if [ -f "$JAR" ]; then
+            JAR_SIZE=$(ls -lh "$JAR" | awk '{print $5}')
+            echo "✓ JAR found: $(basename $JAR) ($JAR_SIZE)"
+          else
+            echo "✗ ERROR: No JAR found"
+            find backend-build -type f 2>/dev/null | head -20
+            exit 1
+          fi
+          
+          if [ -f "$NATIVE" ]; then
+            NATIVE_SIZE=$(ls -lh "$NATIVE" | awk '{print $5}')
+            echo "✓ Native binary found: $(basename $NATIVE) ($NATIVE_SIZE)"
+          else
+            echo "ℹ Native binary not available (will use JAR)"
+          fi
         shell: bash
 
       - name: Copy Backend to Sidecar
