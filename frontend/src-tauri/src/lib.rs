@@ -6,6 +6,9 @@ use tauri::Manager;
 use tauri_plugin_autostart::MacosLauncher;
 use tokio::sync::Mutex;
 
+mod native_backend;
+use native_backend::find_native_backend;
+
 const OLLAMA_PORT: u16 = 11434;
 const TRON_PORT: u16 = 8000;
 // legacy alias removed; use TRON_PORT directly
@@ -1285,12 +1288,16 @@ let target_path = std::path::PathBuf::from(home_dir()).join("Tron");
         serve_argv.push(host.clone());
     }
 
-    let mut cmd = if let Some(java_cmd) = build_java_tron_command(&serve_argv, root) {
+    let mut cmd = if let Some((native_bin, _)) = find_native_backend() {
+        let mut native_cmd = tokio::process::Command::new(native_bin);
+        native_cmd.args(&serve_argv);
+        native_cmd
+    } else if let Some(java_cmd) = build_java_tron_command(&serve_argv, root) {
         java_cmd
     } else {
         let mut s = status.lock().await;
         s.error = Some(
-            "Could not build Java backend command. Set TRON_JAVA_ROOT / OPENTRON_JAVA_ROOT or TRON_JAVA_JAR, or build the Java CLI with Maven.".into()
+            "Could not find or build backend command. For native binary: install GraalVM JDK and run mvn -DskipTests=true -Pnative clean package in java/opentron-java/backend. For Java fallback: set TRON_JAVA_ROOT / OPENTRON_JAVA_ROOT or TRON_JAVA_JAR.".into()
         );
         return;
     };
@@ -2979,6 +2986,11 @@ mod tests {
         }
     }
 }
+
+
+
+
+
 
 
 
