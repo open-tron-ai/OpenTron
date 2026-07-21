@@ -34,6 +34,12 @@
     "resources": [
       "sidecar/backend.jar"
     ],
+    "externalBin": [
+      "sidecar/opentron-backend-x86_64-pc-windows-msvc.exe",
+      "sidecar/opentron-backend-x86_64-apple-darwin",
+      "sidecar/opentron-backend-aarch64-apple-darwin",
+      "sidecar/opentron-backend-x86_64-unknown-linux-gnu"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -42,8 +48,8 @@
       "icons/icon.png"
     ],
     "category": "Utility",
-    "shortDescription": "On-device AI assistant powered by Java 21 backend",
-    "longDescription": "OpenTron: Multi-agent AI orchestration with real-time monitoring, trace debugging, and 14+ connector integrations.",
+    "shortDescription": "Multi-agent AI orchestration with real-time monitoring",
+    "longDescription": "OpenTron: Production-ready AI agents with 14+ connector integrations, real-time energy monitoring, trace debugging, and PostgreSQL support.",
     "macOS": {
       "entitlements": "Entitlements.plist",
       "minimumSystemVersion": "10.15",
