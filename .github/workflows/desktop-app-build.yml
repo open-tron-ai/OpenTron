@@ -27,11 +27,9 @@ jobs:
           JAR=$(ls -t target/*-exec.jar 2>/dev/null | head -1)
           if [ -z "$JAR" ]; then
             echo "ERROR: No JAR built"
-            ls -la target/
             exit 1
           fi
           cp "$JAR" /tmp/backend.jar
-          ls -lh /tmp/backend.jar
         shell: bash
 
       - name: Upload JAR
@@ -56,19 +54,13 @@ jobs:
           JAVA_HOME="${{ env.JAVA_HOME }}"
           $JAVA_HOME/bin/jlink \
             --add-modules java.base,java.logging,java.net.http,java.management,java.naming,java.sql,java.transaction.xa,java.security.jgss,jdk.charsets \
-            --strip-debug \
-            --no-header-files \
-            --no-man-pages \
-            --compress=2 \
+            --strip-debug --no-header-files --no-man-pages --compress=2 \
             --output /tmp/minimal-jre
-          du -sh /tmp/minimal-jre
         shell: bash
 
       - name: Archive JRE
         run: |
-          cd /tmp
-          tar -czf minimal-jre.tar.gz minimal-jre/
-          ls -lh minimal-jre.tar.gz
+          cd /tmp && tar -czf minimal-jre.tar.gz minimal-jre/
         shell: bash
 
       - name: Upload JRE
@@ -124,22 +116,17 @@ jobs:
           npm run tauri build
         shell: cmd
 
-      - name: List Build Output
+      - name: Copy Installers
         run: |
-          echo Checking for build artifacts...
-          if exist frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle (
-            dir /s frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle
-          ) else (
-            echo Bundle directory not found. Listing target directory:
-            dir /s frontend\src-tauri\target\x86_64-pc-windows-msvc\release
-          )
+          mkdir dist
+          for /r "frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle" %%F in (*.msi *.exe) do copy "%%F" dist\
         shell: cmd
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
           name: installer-windows
-          path: frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/
+          path: dist/
           retention-days: 1
 
   release:
@@ -156,13 +143,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: installer-windows
-          path: artifacts
+          path: release
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**
+          files: release/**
           draft: false
-          body: |
-            # OpenTron v${{ github.ref_name }}
-            Production-ready desktop app - zero external dependencies
+          body: OpenTron v${{ github.ref_name }} - Production desktop app, zero dependencies
