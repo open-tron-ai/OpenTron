@@ -159,15 +159,14 @@ jobs:
       - name: Verify Files
         run: |
           echo "Files in installers directory:"
-          ls -lh installers/ || echo "No installers directory"
-          find . -name "*.msi" -o -name "*.exe" 2>/dev/null || echo "No MSI/EXE found"
+          ls -lh installers/
+          echo "Total files: $(ls -1 installers | wc -l)"
+          [ $(ls -1 installers | wc -l) -gt 0 ] || (echo "ERROR: No installers found" && exit 1)
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            installers/*.msi
-            installers/*.exe
+          files: installers/*
           draft: false
           body: |
             # OpenTron v${{ github.ref_name }}
