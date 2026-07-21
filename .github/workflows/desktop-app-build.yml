@@ -23,16 +23,14 @@ jobs:
       - name: Build JAR
         run: |
           cd java/opentron-java/backend
-          echo "Building Spring Boot JAR with H2 embedded database support"
           mvn clean package -DskipTests=true -q
           JAR=$(ls -t target/*-exec.jar 2>/dev/null | head -1)
           if [ -z "$JAR" ]; then
-            echo "ERROR: No exec JAR built"
+            echo "ERROR: No JAR built"
             ls -la target/
             exit 1
           fi
           cp "$JAR" /tmp/backend.jar
-          echo "JAR built successfully"
           ls -lh /tmp/backend.jar
         shell: bash
 
@@ -56,7 +54,6 @@ jobs:
       - name: Create Minimal JRE with jlink
         run: |
           JAVA_HOME="${{ env.JAVA_HOME }}"
-          
           $JAVA_HOME/bin/jlink \
             --add-modules java.base,java.logging,java.net.http,java.management,java.naming,java.sql,java.transaction.xa,java.security.jgss,jdk.charsets \
             --strip-debug \
@@ -64,16 +61,14 @@ jobs:
             --no-man-pages \
             --compress=2 \
             --output /tmp/minimal-jre
-          
-          SIZE=$(du -sh /tmp/minimal-jre | awk '{print $1}')
-          echo "Minimal JRE: $SIZE"
+          du -sh /tmp/minimal-jre
         shell: bash
 
       - name: Archive JRE
         run: |
           cd /tmp
           tar -czf minimal-jre.tar.gz minimal-jre/
-          echo "Archive created: $(ls -lh minimal-jre.tar.gz | awk '{print $5}')"
+          ls -lh minimal-jre.tar.gz
         shell: bash
 
       - name: Upload JRE
@@ -102,15 +97,14 @@ jobs:
           name: minimal-jre
           path: jre-download
 
-      - name: Setup Sidecar (Backend + JRE)
-        shell: cmd
+      - name: Setup Sidecar
         run: |
           mkdir frontend\src-tauri\sidecar
           copy backend-download\backend.jar frontend\src-tauri\sidecar\
           cd jre-download
           tar -xzf minimal-jre.tar.gz
           move minimal-jre ..\frontend\src-tauri\sidecar\jre
-          echo Sidecar ready
+        shell: cmd
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -122,18 +116,19 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Build Frontend and Desktop
-        shell: cmd
+      - name: Build Desktop
         run: |
           cd frontend
-          call npm ci --no-audit --no-fund
-          call npm run build
-          call npm run tauri build -- --target x86_64-pc-windows-msvc
-
-      - name: Verify Installer
+          npm ci --no-audit --no-fund
+          npm run build
+          npm run tauri build
         shell: cmd
+
+      - name: List Build Output
         run: |
-          dir src-tauri\target\x86_64-pc-windows-msvc\release\bundle /s 2>nul || echo "Build artifacts directory"
+          echo Windows build completed successfully
+          dir frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle /s
+        shell: cmd
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
@@ -141,179 +136,10 @@ jobs:
           name: installer-windows
           path: frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/
           retention-days: 1
-          if-no-files-found: warn
-
-  build-desktop-macos-arm64:
-    name: Build Desktop (macOS ARM64)
-    needs: [build-jar, build-minimal-jre]
-    runs-on: macos-14
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download JAR
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-jar
-          path: backend-download
-
-      - name: Download JRE
-        uses: actions/download-artifact@v4
-        with:
-          name: minimal-jre
-          path: jre-download
-
-      - name: Setup Sidecar (Backend + JRE)
-        run: |
-          mkdir -p frontend/src-tauri/sidecar
-          cp backend-download/backend.jar frontend/src-tauri/sidecar/
-          cd jre-download
-          tar -xzf minimal-jre.tar.gz
-          mv minimal-jre ../frontend/src-tauri/sidecar/jre
-          echo "Sidecar ready"
-        shell: bash
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin
-
-      - name: Build Frontend and Desktop
-        run: |
-          cd frontend
-          npm ci --no-audit --no-fund 2>&1 | tail -3
-          npm run build
-          npm run tauri build -- --target aarch64-apple-darwin
-        shell: bash
-
-      - name: Upload Installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: installer-macos-arm64
-          path: frontend/src-tauri/target/aarch64-apple-darwin/release/bundle/
-          retention-days: 1
-          if-no-files-found: warn
-
-  build-desktop-macos-x64:
-    name: Build Desktop (macOS x64)
-    needs: [build-jar, build-minimal-jre]
-    runs-on: macos-13
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download JAR
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-jar
-          path: backend-download
-
-      - name: Download JRE
-        uses: actions/download-artifact@v4
-        with:
-          name: minimal-jre
-          path: jre-download
-
-      - name: Setup Sidecar (Backend + JRE)
-        run: |
-          mkdir -p frontend/src-tauri/sidecar
-          cp backend-download/backend.jar frontend/src-tauri/sidecar/
-          cd jre-download
-          tar -xzf minimal-jre.tar.gz
-          mv minimal-jre ../frontend/src-tauri/sidecar/jre
-          echo "Sidecar ready"
-        shell: bash
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-apple-darwin
-
-      - name: Build Frontend and Desktop
-        run: |
-          cd frontend
-          npm ci --no-audit --no-fund 2>&1 | tail -3
-          npm run build
-          npm run tauri build -- --target x86_64-apple-darwin
-        shell: bash
-
-      - name: Upload Installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: installer-macos-x64
-          path: frontend/src-tauri/target/x86_64-apple-darwin/release/bundle/
-          retention-days: 1
-          if-no-files-found: warn
-
-  build-desktop-linux:
-    name: Build Desktop (Linux)
-    needs: [build-jar, build-minimal-jre]
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download JAR
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-jar
-          path: backend-download
-
-      - name: Download JRE
-        uses: actions/download-artifact@v4
-        with:
-          name: minimal-jre
-          path: jre-download
-
-      - name: Setup Sidecar (Backend + JRE)
-        run: |
-          mkdir -p frontend/src-tauri/sidecar
-          cp backend-download/backend.jar frontend/src-tauri/sidecar/
-          cd jre-download
-          tar -xzf minimal-jre.tar.gz
-          mv minimal-jre ../frontend/src-tauri/sidecar/jre
-          echo "Sidecar ready"
-        shell: bash
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-unknown-linux-gnu
-
-      - name: Build Frontend and Desktop
-        run: |
-          cd frontend
-          npm ci --no-audit --no-fund 2>&1 | tail -3
-          npm run build
-          npm run tauri build -- --target x86_64-unknown-linux-gnu
-        shell: bash
-
-      - name: Upload Installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: installer-linux
-          path: frontend/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/
-          retention-days: 1
-          if-no-files-found: warn
 
   release:
     name: Create GitHub Release
-    needs: [build-desktop-windows, build-desktop-macos-arm64, build-desktop-macos-x64, build-desktop-linux]
+    needs: build-desktop-windows
     runs-on: ubuntu-latest
     if: always()
     permissions:
@@ -325,56 +151,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: installer-windows
-          path: artifacts/windows
+          path: artifacts
 
-      - name: Download macOS ARM64 Installer
-        uses: actions/download-artifact@v4
-        with:
-          name: installer-macos-arm64
-          path: artifacts/macos-arm64
-        continue-on-error: true
-
-      - name: Download macOS x64 Installer
-        uses: actions/download-artifact@v4
-        with:
-          name: installer-macos-x64
-          path: artifacts/macos-x64
-        continue-on-error: true
-
-      - name: Download Linux Installer
-        uses: actions/download-artifact@v4
-        with:
-          name: installer-linux
-          path: artifacts/linux
-        continue-on-error: true
-
-      - name: Collect & Checksum
-        run: |
-          mkdir -p release
-          find artifacts -type f -size +10M -exec cp {} release/ \;
-          cd release
-          if [ "$(ls -1 | wc -l)" -gt 0 ]; then
-            sha256sum * > CHECKSUMS.sha256 2>/dev/null || true
-            echo "Collected installers:"
-            ls -lh
-          else
-            echo "ERROR: No installers found"
-            exit 1
-          fi
-        shell: bash
-
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*
+          files: artifacts/**
           draft: false
           body: |
             # OpenTron v${{ github.ref_name }}
-            
-            Production-ready desktop application with zero external dependencies.
-            
-            Windows: Double-click .msi
-            macOS: Drag to Applications
-            Linux: chmod +x OpenTron.AppImage && ./OpenTron.AppImage
-            
-            Bundled: Java 21 Runtime, Spring Boot 3.1 + H2 database, React 19 + Tauri
+            Production-ready desktop app - zero external dependencies
