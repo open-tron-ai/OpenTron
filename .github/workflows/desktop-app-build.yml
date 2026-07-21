@@ -83,29 +83,76 @@ jobs:
           path: /tmp/minimal-jre.tar.gz
           retention-days: 1
 
-  build-desktop:
-    name: Build Desktop (${{ matrix.os }})
+  build-desktop-windows:
+    name: Build Desktop (Windows)
     needs: [build-jar, build-minimal-jre]
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      matrix:
-        include:
-          - os: windows
-            runner: windows-latest
-            target: x86_64-pc-windows-msvc
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
 
-          - os: macos-x64
-            runner: macos-13
-            target: x86_64-apple-darwin
+      - name: Download JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: backend-download
 
-          - os: macos-arm64
-            runner: macos-14
-            target: aarch64-apple-darwin
+      - name: Download JRE
+        uses: actions/download-artifact@v4
+        with:
+          name: minimal-jre
+          path: jre-download
 
-          - os: linux
-            runner: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
+      - name: Setup Sidecar (Backend + JRE)
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path frontend\src-tauri\sidecar
+          Copy-Item backend-download\backend.jar frontend\src-tauri\sidecar\
+          cd jre-download
+          tar -xzf minimal-jre.tar.gz
+          Move-Item minimal-jre ..\frontend\src-tauri\sidecar\jre
+          Write-Host "✓ Sidecar ready"
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Build Frontend
+        shell: powershell
+        run: |
+          cd frontend
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Build Desktop (Windows)
+        shell: powershell
+        run: |
+          cd frontend/src-tauri
+          cargo tauri build --target x86_64-pc-windows-msvc
+
+      - name: Verify Installer
+        shell: powershell
+        run: |
+          Get-ChildItem -Path frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle -Recurse -File | Where-Object { $_.Length -gt 10MB } | Select-Object FullName, @{N="Size(MB)";E={[math]::Round($_.Length/1MB,2)}}
+
+      - name: Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows
+          path: frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/
+          retention-days: 1
+          if-no-files-found: warn
+
+  build-desktop-macos-arm64:
+    name: Build Desktop (macOS ARM64)
+    needs: [build-jar, build-minimal-jre]
+    runs-on: macos-14
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -128,7 +175,7 @@ jobs:
           cd jre-download
           tar -xzf minimal-jre.tar.gz
           mv minimal-jre ../frontend/src-tauri/sidecar/jre
-          echo "✓ Sidecar ready: $(du -sh ../frontend/src-tauri/sidecar | awk '{print $1}')"
+          echo "✓ Sidecar ready"
         shell: bash
 
       - name: Setup Node.js
@@ -139,7 +186,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: aarch64-apple-darwin
 
       - name: Build Frontend
         run: |
@@ -151,35 +198,175 @@ jobs:
       - name: Build Desktop
         run: |
           cd frontend/src-tauri
-          cargo tauri build --target ${{ matrix.target }} 2>&1 | tail -20
-        shell: bash
-
-      - name: Verify Installer
-        run: |
-          find frontend/src-tauri/target/${{ matrix.target }}/release/bundle -type f -size +10M -exec ls -lh {} \; | head -5
+          cargo tauri build --target aarch64-apple-darwin 2>&1 | tail -20
         shell: bash
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
-          name: installer-${{ matrix.os }}
-          path: frontend/src-tauri/target/${{ matrix.target }}/release/bundle/
+          name: installer-macos-arm64
+          path: frontend/src-tauri/target/aarch64-apple-darwin/release/bundle/
+          retention-days: 1
+          if-no-files-found: warn
+
+  build-desktop-macos-x64:
+    name: Build Desktop (macOS x64)
+    needs: [build-jar, build-minimal-jre]
+    runs-on: macos-13
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: backend-download
+
+      - name: Download JRE
+        uses: actions/download-artifact@v4
+        with:
+          name: minimal-jre
+          path: jre-download
+
+      - name: Setup Sidecar (Backend + JRE)
+        run: |
+          mkdir -p frontend/src-tauri/sidecar
+          cp backend-download/backend.jar frontend/src-tauri/sidecar/
+          cd jre-download
+          tar -xzf minimal-jre.tar.gz
+          mv minimal-jre ../frontend/src-tauri/sidecar/jre
+          echo "✓ Sidecar ready"
+        shell: bash
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm ci --no-audit --no-fund 2>&1 | tail -3
+          npm run build
+        shell: bash
+
+      - name: Build Desktop
+        run: |
+          cd frontend/src-tauri
+          cargo tauri build --target x86_64-apple-darwin 2>&1 | tail -20
+        shell: bash
+
+      - name: Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-macos-x64
+          path: frontend/src-tauri/target/x86_64-apple-darwin/release/bundle/
+          retention-days: 1
+          if-no-files-found: warn
+
+  build-desktop-linux:
+    name: Build Desktop (Linux)
+    needs: [build-jar, build-minimal-jre]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: backend-download
+
+      - name: Download JRE
+        uses: actions/download-artifact@v4
+        with:
+          name: minimal-jre
+          path: jre-download
+
+      - name: Setup Sidecar (Backend + JRE)
+        run: |
+          mkdir -p frontend/src-tauri/sidecar
+          cp backend-download/backend.jar frontend/src-tauri/sidecar/
+          cd jre-download
+          tar -xzf minimal-jre.tar.gz
+          mv minimal-jre ../frontend/src-tauri/sidecar/jre
+          echo "✓ Sidecar ready"
+        shell: bash
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm ci --no-audit --no-fund 2>&1 | tail -3
+          npm run build
+        shell: bash
+
+      - name: Build Desktop
+        run: |
+          cd frontend/src-tauri
+          cargo tauri build --target x86_64-unknown-linux-gnu 2>&1 | tail -20
+        shell: bash
+
+      - name: Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-linux
+          path: frontend/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/
           retention-days: 1
           if-no-files-found: warn
 
   release:
     name: Create GitHub Release
-    needs: build-desktop
+    needs: [build-desktop-windows, build-desktop-macos-arm64, build-desktop-macos-x64, build-desktop-linux]
     runs-on: ubuntu-latest
+    if: always()
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Installers
+      - name: Download Windows Installer
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          name: installer-windows
+          path: artifacts/windows
+
+      - name: Download macOS ARM64 Installer
+        uses: actions/download-artifact@v4
+        with:
+          name: installer-macos-arm64
+          path: artifacts/macos-arm64
+        continue-on-error: true
+
+      - name: Download macOS x64 Installer
+        uses: actions/download-artifact@v4
+        with:
+          name: installer-macos-x64
+          path: artifacts/macos-x64
+        continue-on-error: true
+
+      - name: Download Linux Installer
+        uses: actions/download-artifact@v4
+        with:
+          name: installer-linux
+          path: artifacts/linux
+        continue-on-error: true
 
       - name: Collect & Checksum
         run: |
@@ -188,7 +375,11 @@ jobs:
           cd release
           if [ "$(ls -1 | wc -l)" -gt 0 ]; then
             sha256sum * > CHECKSUMS.sha256 2>/dev/null || true
+            echo "=== Collected Installers ==="
             ls -lh
+          else
+            echo "ERROR: No installers found"
+            exit 1
           fi
         shell: bash
 
