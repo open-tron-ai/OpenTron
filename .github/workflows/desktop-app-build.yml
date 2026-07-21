@@ -31,6 +31,7 @@ jobs:
           fi
           cp "$JAR" /tmp/backend.jar
           ls -lh /tmp/backend.jar
+        shell: bash
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
@@ -51,7 +52,7 @@ jobs:
 
       - name: Create Minimal JRE with jlink
         run: |
-          JAVA_HOME=$JAVA_HOME_21_X64
+          JAVA_HOME="${{ env.JAVA_HOME }}"
           
           $JAVA_HOME/bin/jlink \
             --add-modules java.base,java.logging,java.net.http,java.management,java.naming,java.sql,java.transaction.xa,java.security.jgss,jdk.charsets \
@@ -63,12 +64,14 @@ jobs:
           
           du -sh /tmp/minimal-jre
           ls /tmp/minimal-jre/bin | head -5
+        shell: bash
 
       - name: Archive JRE
         run: |
           cd /tmp
           tar -czf minimal-jre.tar.gz minimal-jre/
           ls -lh minimal-jre.tar.gz
+        shell: bash
 
       - name: Upload JRE
         uses: actions/upload-artifact@v4
@@ -107,29 +110,23 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: backend-jar
-          path: /tmp/artifacts
+          path: backend-download
 
       - name: Download JRE
         uses: actions/download-artifact@v4
         with:
           name: minimal-jre
-          path: /tmp/artifacts
+          path: jre-download
 
       - name: Setup Sidecar
-        shell: bash
         run: |
           mkdir -p frontend/src-tauri/sidecar
-          
-          # Copy JAR
-          cp /tmp/artifacts/backend.jar frontend/src-tauri/sidecar/
-          
-          # Extract and copy JRE
-          cd /tmp/artifacts
+          cp backend-download/backend.jar frontend/src-tauri/sidecar/
+          cd jre-download
           tar -xzf minimal-jre.tar.gz
-          mv minimal-jre ../../$GITHUB_WORKSPACE/frontend/src-tauri/sidecar/jre
-          
-          echo "✓ Sidecar ready"
-          du -sh frontend/src-tauri/sidecar
+          mv minimal-jre ../frontend/src-tauri/sidecar/jre
+          du -sh ../frontend/src-tauri/sidecar
+        shell: bash
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -146,30 +143,26 @@ jobs:
           cd frontend
           npm ci --no-audit --no-fund
           npm run build
+        shell: bash
 
       - name: Build Desktop
         run: |
           cd frontend/src-tauri
           cargo tauri build --target ${{ matrix.target }}
+        shell: bash
 
       - name: Verify Installer
-        shell: bash
         run: |
-          BUNDLE="frontend/src-tauri/target/${{ matrix.target }}/release/bundle"
-          ls -lh "$BUNDLE"/*/*.{msi,exe,dmg,AppImage,deb} 2>/dev/null | head -10 || echo "Looking for installers..."
-          find "$BUNDLE" -type f -size +10M -exec ls -lh {} \;
+          find frontend/src-tauri/target/${{ matrix.target }}/release/bundle -type f -size +10M | head -5
+        shell: bash
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
           name: installer-${{ matrix.os }}
-          path: |
-            frontend/src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
-            frontend/src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
-            frontend/src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-            frontend/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
-            frontend/src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
+          path: frontend/src-tauri/target/${{ matrix.target }}/release/bundle/
           retention-days: 1
+          if-no-files-found: warn
 
   release:
     name: Create Release
@@ -177,7 +170,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: always()
     steps:
       - uses: actions/checkout@v4
 
@@ -186,14 +178,14 @@ jobs:
         with:
           path: artifacts
 
-      - name: Collect Files
-        shell: bash
+      - name: Create Checksums
         run: |
           mkdir -p release
           find artifacts -type f -size +10M -exec cp {} release/ \;
           cd release
-          sha256sum * > CHECKSUMS.sha256
+          sha256sum * > CHECKSUMS.sha256 2>/dev/null || true
           ls -lh
+        shell: bash
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -203,24 +195,24 @@ jobs:
           body: |
             # OpenTron v${{ github.ref_name }}
             
-            **Production-ready desktop app - everything bundled, zero setup.**
+            Production-ready desktop application. Everything bundled - zero setup.
             
-            ## Download
-            - Windows: `OpenTron.msi` or `OpenTron.exe`
+            ## Installers
+            - Windows: `OpenTron.msi` 
             - macOS Intel: `OpenTron-x86_64.dmg`
             - macOS ARM: `OpenTron-arm64.dmg`
             - Linux: `OpenTron.AppImage` or `OpenTron.deb`
             
-            ## What's Inside
+            ## Bundled
             ✅ Java 21 Runtime (~50MB)
             ✅ Spring Boot 3.1 Backend
-            ✅ React 19 Frontend
+            ✅ React 19 Frontend  
             ✅ PostgreSQL Support
             ✅ 6 AI Agents + 14 Connectors
             
             ## Install
             **Windows:** Double-click `.msi`
-            **macOS:** Mount `.dmg`, drag to Applications
-            **Linux:** `chmod +x OpenTron.AppImage && ./OpenTron.AppImage`
+            **macOS:** Drag to Applications
+            **Linux:** `./OpenTron.AppImage`
             
-            No Java required - everything included.
+            No Java installation needed.
