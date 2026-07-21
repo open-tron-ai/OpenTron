@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Tron",
+  "productName": "OpenTron",
   "version": "1.0.1",
-  "identifier": "com.tron.desktop",
+  "identifier": "com.opentron.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Tron",
+        "title": "OpenTron",
         "width": 1280,
         "height": 800,
         "minWidth": 900,
@@ -31,11 +31,8 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": false,
-    "sidecar": [
-      {
-        "name": "opentron-backend",
-        "shell": false
-      }
+    "resources": [
+      "sidecar/backend.jar"
     ],
     "icon": [
       "icons/32x32.png",
@@ -45,8 +42,8 @@
       "icons/icon.png"
     ],
     "category": "Utility",
-    "shortDescription": "On-device AI assistant with energy monitoring and trace debugging",
-    "longDescription": "Tron Desktop wraps the Tron research framework in a native desktop application with real-time energy monitoring, trace debugging, learning curve visualization, and memory browsing.",
+    "shortDescription": "On-device AI assistant powered by Java 21 backend",
+    "longDescription": "OpenTron: Multi-agent AI orchestration with real-time monitoring, trace debugging, and 14+ connector integrations.",
     "macOS": {
       "entitlements": "Entitlements.plist",
       "minimumSystemVersion": "10.15",
@@ -63,7 +60,7 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["tron"]
+        "schemes": ["opentron"]
       }
     }
   }
