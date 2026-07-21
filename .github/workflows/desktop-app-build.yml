@@ -5,47 +5,11 @@ on:
     tags:
       - 'v*.*.*'
   workflow_dispatch:
-    inputs:
-      build_native:
-        description: 'Build GraalVM native binaries (slower, ~30 min per platform)'
-        required: false
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
 
 jobs:
   build-backend:
-    name: Build Backend (${{ matrix.backend-type }})
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      matrix:
-        include:
-          # Windows
-          - os: windows
-            arch: x86_64
-            runner: windows-latest
-            backend-type: 'jar'
-
-          # macOS Intel
-          - os: macos
-            arch: x86_64
-            runner: macos-13
-            backend-type: 'jar'
-
-          # macOS ARM64
-          - os: macos
-            arch: aarch64
-            runner: macos-14
-            backend-type: 'jar'
-
-          # Linux
-          - os: linux
-            arch: x86_64
-            runner: ubuntu-latest
-            backend-type: 'jar'
-
+    name: Build Backend
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -56,15 +20,8 @@ jobs:
           distribution: 'graalvm-community'
           components: 'native-image'
           cache: maven
-          native-image-job-reports: 'true'
 
-      - name: Verify GraalVM
-        run: |
-          java -version
-          native-image --version
-        shell: bash
-
-      - name: Build Backend (JAR)
+      - name: Build Backend (JAR only)
         run: |
           cd java/opentron-java/backend
           mvn clean package -DskipTests=true -q
@@ -72,50 +29,111 @@ jobs:
           if [ ! -f "$JAR" ]; then
             JAR=$(ls target/*.jar | head -1)
           fi
-          echo "jar_path=$JAR" >> $GITHUB_OUTPUT
           SIZE=$(ls -lh "$JAR" | awk '{print $5}')
           echo "✓ JAR built: $(basename $JAR) ($SIZE)"
         shell: bash
-        id: build_jar
 
-      - name: Build Backend (GraalVM Native - Optional)
-        if: github.event.inputs.build_native == 'true' || github.event_name == 'push'
-        run: |
-          cd java/opentron-java/backend
-          # Only attempt native build if we can determine the correct target
-          PROFILE="native-$(echo "${{ matrix.os }}-${{ matrix.arch }}" | sed 's/-/_/g')"
-          echo "Attempting native profile: $PROFILE"
-          mvn -P"$PROFILE" -DskipTests=true clean package -q 2>&1 | grep -E "(error|warning|BUILD)" | tail -20
-          
-          # Find native binary (check for all possible output names)
-          NATIVE=$(find target -type f -perm -111 \( -name "opentron-backend*" ! -name "*.jar" \) 2>/dev/null | head -1)
-          if [ -z "$NATIVE" ] && [ "${{ matrix.os }}" = "windows" ]; then
-            NATIVE=$(find target -type f -name "opentron-backend*.exe" 2>/dev/null | head -1)
-          fi
-          
-          if [ -f "$NATIVE" ]; then
-            SIZE=$(ls -lh "$NATIVE" | awk '{print $5}')
-            echo "native_path=$NATIVE" >> $GITHUB_OUTPUT
-            echo "✓ Native binary built: $(basename $NATIVE) ($SIZE)"
-          else
-            echo "ℹ Native build did not produce executable, will use JAR fallback"
-          fi
-        shell: bash
-        id: build_native
-        continue-on-error: true
-
-      - name: Upload Backend Artifacts
+      - name: Upload Backend JAR
         uses: actions/upload-artifact@v4
         with:
-          name: backend-${{ matrix.os }}-${{ matrix.arch }}
-          path: |
-            java/opentron-java/backend/target/opentron-backend*
+          name: backend-jar
+          path: java/opentron-java/backend/target/*.jar
           retention-days: 1
-          if-no-files-found: warn
+          if-no-files-found: error
+
+  build-jre:
+    name: Build Minimal JRE (${{ matrix.os }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - os: windows
+            runner: windows-latest
+            jre-download: 'https://github.com/adoptium/temurin21-binaries/releases/download/jdk21u.0.1-ga/OpenJDK21U-jdk_x64_windows_hotspot_21.0.1_12.zip'
+
+          - os: macos-x64
+            runner: macos-13
+            jre-download: 'https://github.com/adoptium/temurin21-binaries/releases/download/jdk21u.0.1-ga/OpenJDK21U-jdk_x64_mac_hotspot_21.0.1_12.tar.gz'
+
+          - os: macos-aarch64
+            runner: macos-14
+            jre-download: 'https://github.com/adoptium/temurin21-binaries/releases/download/jdk21u.0.1-ga/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.1_12.tar.gz'
+
+          - os: linux
+            runner: ubuntu-latest
+            jre-download: 'https://github.com/adoptium/temurin21-binaries/releases/download/jdk21u.0.1-ga/OpenJDK21U-jdk_x64_linux_hotspot_21.0.1_12.tar.gz'
+
+    steps:
+      - name: Download JDK 21
+        run: |
+          mkdir -p jdk-download
+          cd jdk-download
+          echo "Downloading JDK 21..."
+          curl -L -o jdk.tmp "${{ matrix.jre-download }}" 2>&1 | grep -E "(100|Time)"
+          
+          if file jdk.tmp | grep -q "Zip"; then
+            unzip -q jdk.tmp
+            rm jdk.tmp
+          else
+            tar -xzf jdk.tmp
+            rm jdk.tmp
+          fi
+          
+          # Flatten extracted JDK
+          JDK_DIR=$(find . -maxdepth 1 -type d ! -name "." | head -1)
+          if [ -n "$JDK_DIR" ]; then
+            mv "$JDK_DIR"/* . 2>/dev/null || true
+            rmdir "$JDK_DIR" 2>/dev/null || true
+          fi
+          
+          echo "✓ JDK extracted"
+        shell: bash
+
+      - name: Create Minimal JRE with jlink
+        run: |
+          echo "=== Building minimal JRE with jlink ==="
+          
+          # Modules needed for Spring Boot + Java 21 runtime
+          MODULES="java.base,java.logging,java.net.http,java.management,java.base,java.desktop,java.prefs,java.naming,java.sql,java.transaction.xa,java.base,jdk.charsets,java.security.sasl,java.security.jgss"
+          
+          ./bin/jlink \
+            --add-modules "$MODULES" \
+            --strip-debug \
+            --no-header-files \
+            --no-man-pages \
+            --compress=2 \
+            --output minimal-jre
+          
+          SIZE=$(du -sh minimal-jre | awk '{print $1}')
+          echo "✓ Minimal JRE created: $SIZE"
+          du -sh minimal-jre
+        shell: bash
+        working-directory: jdk-download
+
+      - name: Compress and Upload Minimal JRE
+        run: |
+          cd jdk-download
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            7z a -tzip ../minimal-jre-${{ matrix.os }}.zip minimal-jre/ > /dev/null 2>&1
+          else
+            tar -czf ../minimal-jre-${{ matrix.os }}.tar.gz minimal-jre/
+          fi
+          
+          SIZE=$(ls -lh ../minimal-jre-${{ matrix.os }}.* | awk '{print $5}')
+          echo "✓ JRE archive: $SIZE"
+        shell: bash
+
+      - name: Upload Minimal JRE
+        uses: actions/upload-artifact@v4
+        with:
+          name: minimal-jre-${{ matrix.os }}
+          path: minimal-jre-${{ matrix.os }}.*
+          retention-days: 1
+          if-no-files-found: error
 
   build-desktop:
     name: Build Desktop App (${{ matrix.os }}-${{ matrix.arch }})
-    needs: build-backend
+    needs: [build-backend, build-jre]
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
@@ -124,85 +142,78 @@ jobs:
             arch: x86_64
             runner: windows-latest
             target: x86_64-pc-windows-msvc
+            jre-os: windows
 
           - os: macos
             arch: x86_64
             runner: macos-13
             target: x86_64-apple-darwin
+            jre-os: macos-x64
 
           - os: macos
             arch: aarch64
             runner: macos-14
             target: aarch64-apple-darwin
+            jre-os: macos-aarch64
 
           - os: linux
             arch: x86_64
             runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            jre-os: linux
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Backend Artifacts
+      - name: Download Backend JAR
         uses: actions/download-artifact@v4
         with:
-          name: backend-${{ matrix.os }}-${{ matrix.arch }}
-          path: backend-build
+          name: backend-jar
+          path: backend-jar
 
-      - name: Verify Backend Artifacts
-        run: |
-          echo "=== Backend artifacts ==="
-          JAR=$(find backend-build -name "*.jar" | grep -E "exec" | head -1)
-          if [ -z "$JAR" ]; then
-            JAR=$(find backend-build -name "*.jar" | head -1)
-          fi
-          
-          NATIVE=$(find backend-build -type f \( -name "opentron-backend*" ! -name "*.jar" \) 2>/dev/null | head -1)
-          
-          if [ -f "$JAR" ]; then
-            JAR_SIZE=$(ls -lh "$JAR" | awk '{print $5}')
-            echo "✓ JAR found: $(basename $JAR) ($JAR_SIZE)"
-          else
-            echo "✗ ERROR: No JAR found"
-            find backend-build -type f 2>/dev/null | head -20
-            exit 1
-          fi
-          
-          if [ -f "$NATIVE" ]; then
-            NATIVE_SIZE=$(ls -lh "$NATIVE" | awk '{print $5}')
-            echo "✓ Native binary found: $(basename $NATIVE) ($NATIVE_SIZE)"
-          else
-            echo "ℹ Native binary not available (will use JAR)"
-          fi
-        shell: bash
+      - name: Download Minimal JRE
+        uses: actions/download-artifact@v4
+        with:
+          name: minimal-jre-${{ matrix.jre-os }}
+          path: jre-archive
 
-      - name: Copy Backend to Sidecar
+      - name: Extract and Copy Backend + JRE to Sidecar
         run: |
           mkdir -p frontend/src-tauri/sidecar
           
-          # Try to find native binary first
-          NATIVE=$(find backend-build -type f \( -name "opentron-backend*" ! -name "*.jar" \) | head -1)
-          if [ -n "$NATIVE" ] && [ -f "$NATIVE" ]; then
-            echo "Using native binary: $NATIVE"
-            cp "$NATIVE" frontend/src-tauri/sidecar/
-            chmod +x frontend/src-tauri/sidecar/*
-          else
-            # Fall back to JAR
-            JAR=$(find backend-build -name "*.jar" | grep -E "exec" | head -1)
-            if [ -z "$JAR" ]; then
-              JAR=$(find backend-build -name "*.jar" | head -1)
-            fi
-            if [ -f "$JAR" ]; then
-              echo "Using JAR: $JAR"
-              cp "$JAR" frontend/src-tauri/sidecar/backend.jar
-            else
-              echo "ERROR: No backend artifacts found"
-              exit 1
-            fi
+          # Copy JAR
+          JAR=$(find backend-jar -name "*.jar" | grep -E "exec" | head -1)
+          if [ -z "$JAR" ]; then
+            JAR=$(find backend-jar -name "*.jar" | head -1)
           fi
           
-          echo "=== Sidecar contents ==="
-          ls -lh frontend/src-tauri/sidecar/
+          if [ ! -f "$JAR" ]; then
+            echo "ERROR: No JAR found"
+            exit 1
+          fi
+          
+          cp "$JAR" frontend/src-tauri/sidecar/backend.jar
+          echo "✓ Backend JAR copied"
+          
+          # Extract and copy JRE
+          cd jre-archive
+          JRE_FILE=$(ls minimal-jre-* | head -1)
+          
+          if [[ "$JRE_FILE" == *.zip ]]; then
+            unzip -q "$JRE_FILE"
+          else
+            tar -xzf "$JRE_FILE"
+          fi
+          
+          mv minimal-jre ../frontend/src-tauri/sidecar/jre
+          
+          cd ..
+          JRE_SIZE=$(du -sh frontend/src-tauri/sidecar/jre | awk '{print $1}')
+          JAR_SIZE=$(ls -lh frontend/src-tauri/sidecar/backend.jar | awk '{print $5}')
+          
+          echo "✓ JRE copied: $JRE_SIZE"
+          echo "✓ JAR size: $JAR_SIZE"
+          echo "✓ Total sidecar size: $(du -sh frontend/src-tauri/sidecar | awk '{print $1}')"
         shell: bash
 
       - name: Setup Node.js
@@ -233,14 +244,17 @@ jobs:
       - name: Verify Installer
         run: |
           BUNDLE="frontend/src-tauri/target/${{ matrix.target }}/release/bundle"
+          
+          echo "=== Checking installer ==="
+          find "$BUNDLE" -type f \( -name "*.msi" -o -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" \) -exec ls -lh {} \;
+          
           INSTALLERS=$(find "$BUNDLE" -type f \( -name "*.msi" -o -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" \) 2>/dev/null | wc -l)
           if [ $INSTALLERS -eq 0 ]; then
-            echo "ERROR: No installers found in $BUNDLE"
-            find "$BUNDLE" -type f 2>/dev/null | head -20
+            echo "ERROR: No installers found"
+            find "$BUNDLE" -type f | head -20
             exit 1
           fi
           echo "✓ Found $INSTALLERS installer(s)"
-          find "$BUNDLE" -type f \( -name "*.msi" -o -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" \) -exec ls -lh {} \;
         shell: bash
 
       - name: Upload Installer
@@ -296,7 +310,7 @@ jobs:
           body: |
             # OpenTron v${{ github.ref_name }}
             
-            **Production-ready cross-platform desktop application with bundled Java 21 Spring Boot backend.**
+            **Production-ready cross-platform desktop application. Everything bundled - zero setup.**
             
             ## 🚀 Download & Install
             
@@ -312,24 +326,24 @@ jobs:
             - **OpenTron.AppImage** - Universal executable (glibc 2.29+)
             - **OpenTron.deb** - Debian/Ubuntu (18.04+)
             
-            ## ✨ What's Inside
+            ## ✨ What's Included
             
-            ✅ **Java 21 Spring Boot Backend** - Bundled, zero setup
-            ✅ **React 19 + Tauri Frontend** - Native performance
-            ✅ **Multi-agent AI Orchestration** - 6 agents + 14 connectors
+            ✅ **Java 21 Runtime** - Minimal JRE bundled (~50MB per installer)
+            ✅ **Spring Boot 3.1 Backend** - Multi-agent AI orchestration
+            ✅ **React 19 + Tauri Frontend** - Native desktop experience
+            ✅ **6 Agents + 14 Connectors** - Ready-to-use integrations
             ✅ **PostgreSQL Support** - Full data persistence
-            ✅ **Zero External Dependencies** - Everything included
-            ✅ **Sub-second Startup** - Optimized for speed
+            ✅ **Zero External Dependencies** - Everything included in installer
             ✅ **Cross-platform** - Windows, macOS, Linux
             
-            ## 📥 Installation
+            ## 📥 Installation (One Click, No Setup)
             
-            **Windows:** Double-click the `.msi` file
-            **macOS:** Mount `.dmg` and drag to Applications
+            **Windows:** Double-click the `.msi` file and follow the wizard
+            **macOS:** Mount `.dmg` and drag to Applications folder
             **Linux AppImage:** `chmod +x OpenTron.AppImage && ./OpenTron.AppImage`
             **Linux DEB:** `sudo dpkg -i OpenTron.deb`
             
-            No Java installation required. Everything is bundled.
+            That's it. No Java installation needed. Just click and run.
             
             ## 🔒 Verification
             
@@ -341,9 +355,10 @@ jobs:
             
             ## ⚡ Performance
             
-            - **Startup:** 0.5-1.5 seconds (native) or 3-5 seconds (JAR)
-            - **Memory:** 150-400 MB (depending on workload)
+            - **Startup:** 3-5 seconds (includes JVM warmup)
+            - **Memory:** 200-300 MB (minimal JRE + Spring Boot)
             - **Database:** PostgreSQL (local or remote)
+            - **Installer Size:** ~200-250 MB per platform
             
             ## 📋 System Requirements
             
@@ -353,8 +368,11 @@ jobs:
             | macOS | 10.15+ (Intel or Apple Silicon) |
             | Linux | glibc 2.29+ (Ubuntu 18.04+, Debian 10+) |
             
-            ## 🛠 Built With
+            **No external software required** - Java runtime is bundled with the installer.
             
-            - **Backend:** Java 21 • Spring Boot 3.1 • GraalVM Native
-            - **Frontend:** React 19 • Tauri • TypeScript
-            - **Build:** Maven • Cargo • GitHub Actions
+            ## 🛠 Architecture
+            
+            - **Backend:** Java 21 (Spring Boot 3.1) + Minimal JRE (~50MB)
+            - **Frontend:** React 19 + Tauri (Rust)
+            - **Build:** Maven + Cargo + jlink + GitHub Actions
+            - **Distribution:** Native installers for all platforms

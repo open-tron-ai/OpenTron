@@ -32,13 +32,8 @@
     "targets": "all",
     "createUpdaterArtifacts": false,
     "resources": [
-      "sidecar/backend.jar"
-    ],
-    "externalBin": [
-      "sidecar/opentron-backend-x86_64-pc-windows-msvc.exe",
-      "sidecar/opentron-backend-x86_64-apple-darwin",
-      "sidecar/opentron-backend-aarch64-apple-darwin",
-      "sidecar/opentron-backend-x86_64-unknown-linux-gnu"
+      "sidecar/backend.jar",
+      "sidecar/jre"
     ],
     "icon": [
       "icons/32x32.png",
@@ -49,7 +44,7 @@
     ],
     "category": "Utility",
     "shortDescription": "Multi-agent AI orchestration with real-time monitoring",
-    "longDescription": "OpenTron: Production-ready AI agents with 14+ connector integrations, real-time energy monitoring, trace debugging, and PostgreSQL support.",
+    "longDescription": "OpenTron: Production-ready AI agents with 14+ connector integrations, real-time energy monitoring, trace debugging, and PostgreSQL support. Everything bundled - zero external dependencies.",
     "macOS": {
       "entitlements": "Entitlements.plist",
       "minimumSystemVersion": "10.15",
