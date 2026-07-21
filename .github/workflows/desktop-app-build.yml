@@ -159,25 +159,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: installer-windows-msi
-          path: release
+          path: installers
 
       - name: Download NSIS
         uses: actions/download-artifact@v4
         with:
           name: installer-windows-nsis
-          path: release
-
-      - name: Verify Files
-        run: |
-          echo "Installers found:"
-          ls -lh release/
-          [ -f release/*.msi ] && echo "MSI found" || echo "ERROR: No MSI"
-          [ -f release/*.exe ] && echo "EXE found" || echo "ERROR: No EXE"
+          path: installers
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*
+          files: installers/*
           draft: false
           body: |
             # OpenTron v${{ github.ref_name }}
