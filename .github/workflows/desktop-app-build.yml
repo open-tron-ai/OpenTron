@@ -26,7 +26,8 @@ jobs:
           mvn clean package -DskipTests=true -q
           JAR=$(ls -t target/*-exec.jar 2>/dev/null | head -1)
           if [ -z "$JAR" ]; then
-            echo "ERROR: No JAR built"
+            echo "ERROR: No exec JAR built"
+            ls -la target/
             exit 1
           fi
           cp "$JAR" /tmp/backend.jar
@@ -97,6 +98,31 @@ jobs:
           tar -xzf minimal-jre.tar.gz
           move minimal-jre ..\frontend\src-tauri\sidecar\jre
         shell: cmd
+
+      - name: Create Backend Launcher (Windows)
+        run: |
+          @echo off
+          setlocal enabledelayedexpansion
+          set "HOME_DIR=%USERPROFILE%"
+          set "SIDECAR_DIR=!HOME_DIR!\.OpenTron\sidecar"
+          set "BACKEND_JAR=!SIDECAR_DIR!\backend.jar"
+          set "JRE_BIN=!SIDECAR_DIR!\jre\bin\java.exe"
+          
+          if not exist "!BACKEND_JAR!" (
+            echo ERROR: backend.jar not found at !BACKEND_JAR!
+            exit /b 1
+          )
+          
+          if not exist "!JRE_BIN!" (
+            echo ERROR: Java runtime not found at !JRE_BIN!
+            exit /b 1
+          )
+          
+          "!JRE_BIN!" -Dspring.profiles.active=embedded -jar "!BACKEND_JAR!" --server.port=8000
+        shell: cmd
+        working-directory: frontend/src-tauri/sidecar
+        env:
+          BACKEND_LAUNCHER_BAT: backend-launcher.bat
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -175,7 +201,7 @@ jobs:
           body: |
             # OpenTron v${{ github.ref_name }}
             
-            Production-ready desktop application - zero external dependencies
+            Production-ready desktop application - zero external dependencies.
             
             **Included:**
             - Java 21 Runtime (minimal JRE)
@@ -183,4 +209,4 @@ jobs:
             - React 19 + Tauri Frontend
             
             **Windows Installation:**
-            Download .msi or .exe and run - no setup required
+            Download .msi or .exe and run - no setup required. Data stored at ~/.opentron/opentron.h2
