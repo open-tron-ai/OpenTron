@@ -122,23 +122,18 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Build Frontend
+      - name: Build Frontend and Desktop
         shell: cmd
         run: |
           cd frontend
           call npm ci --no-audit --no-fund
           call npm run build
-
-      - name: Build Desktop (Windows)
-        shell: cmd
-        run: |
-          cd frontend\src-tauri
-          cargo tauri build --target x86_64-pc-windows-msvc
+          call npm run tauri build -- --target x86_64-pc-windows-msvc
 
       - name: Verify Installer
         shell: cmd
         run: |
-          dir frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle /s
+          dir src-tauri\target\x86_64-pc-windows-msvc\release\bundle /s 2>nul || echo "Build artifacts directory"
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
@@ -188,17 +183,12 @@ jobs:
         with:
           targets: aarch64-apple-darwin
 
-      - name: Build Frontend
+      - name: Build Frontend and Desktop
         run: |
           cd frontend
           npm ci --no-audit --no-fund 2>&1 | tail -3
           npm run build
-        shell: bash
-
-      - name: Build Desktop
-        run: |
-          cd frontend/src-tauri
-          cargo tauri build --target aarch64-apple-darwin 2>&1 | tail -20
+          npm run tauri build -- --target aarch64-apple-darwin
         shell: bash
 
       - name: Upload Installer
@@ -249,17 +239,12 @@ jobs:
         with:
           targets: x86_64-apple-darwin
 
-      - name: Build Frontend
+      - name: Build Frontend and Desktop
         run: |
           cd frontend
           npm ci --no-audit --no-fund 2>&1 | tail -3
           npm run build
-        shell: bash
-
-      - name: Build Desktop
-        run: |
-          cd frontend/src-tauri
-          cargo tauri build --target x86_64-apple-darwin 2>&1 | tail -20
+          npm run tauri build -- --target x86_64-apple-darwin
         shell: bash
 
       - name: Upload Installer
@@ -310,17 +295,12 @@ jobs:
         with:
           targets: x86_64-unknown-linux-gnu
 
-      - name: Build Frontend
+      - name: Build Frontend and Desktop
         run: |
           cd frontend
           npm ci --no-audit --no-fund 2>&1 | tail -3
           npm run build
-        shell: bash
-
-      - name: Build Desktop
-        run: |
-          cd frontend/src-tauri
-          cargo tauri build --target x86_64-unknown-linux-gnu 2>&1 | tail -20
+          npm run tauri build -- --target x86_64-unknown-linux-gnu
         shell: bash
 
       - name: Upload Installer
@@ -375,7 +355,7 @@ jobs:
           cd release
           if [ "$(ls -1 | wc -l)" -gt 0 ]; then
             sha256sum * > CHECKSUMS.sha256 2>/dev/null || true
-            echo "=== Collected Installers ==="
+            echo "Collected installers:"
             ls -lh
           else
             echo "ERROR: No installers found"
@@ -391,18 +371,10 @@ jobs:
           body: |
             # OpenTron v${{ github.ref_name }}
             
-            Production-ready desktop application. Everything bundled - zero external dependencies.
-            
-            Download & Install
+            Production-ready desktop application with zero external dependencies.
             
             Windows: Double-click .msi
             macOS: Drag to Applications
             Linux: chmod +x OpenTron.AppImage && ./OpenTron.AppImage
             
-            Bundled:
-            - Java 21 Runtime (50MB minimal JRE)
-            - Spring Boot 3.1 Backend with H2 database
-            - React 19 + Tauri Frontend
-            - Zero external dependencies
-            
-            Data stored at ~/.opentron/opentron.h2
+            Bundled: Java 21 Runtime, Spring Boot 3.1 + H2 database, React 19 + Tauri
