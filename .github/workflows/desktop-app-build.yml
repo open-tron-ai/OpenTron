@@ -1,211 +1,161 @@
-name: Desktop App Build (With Native Backend)
+name: Build Desktop App Installers (Production)
 
 on:
   push:
-    branches: [main, develop]
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/desktop-app-build.yml'
-  pull_request:
-    branches: [main, develop]
-    paths:
-      - 'frontend/**'
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
 
 jobs:
-  build-desktop:
-    name: Build Desktop App (${{ matrix.os }})
+  build-and-bundle:
+    name: Build & Bundle (${{ matrix.os }}-${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
-          # macOS Intel
-          - os: macos
-            arch: x86_64
-            runner: macos-13
-            build-target: 'x86_64-apple-darwin'
-            package-format: 'dmg'
-
-          # macOS ARM64 (Apple Silicon)
-          - os: macos
-            arch: aarch64
-            runner: macos-14
-            build-target: 'aarch64-apple-darwin'
-            package-format: 'dmg'
-
-          # Linux x86_64
-          - os: linux
-            arch: x86_64
-            runner: ubuntu-latest
-            build-target: 'x86_64-unknown-linux-gnu'
-            package-format: 'appimage'
-
-          # Linux ARM64
-          - os: linux
-            arch: aarch64
-            runner: ubuntu-latest
-            build-target: 'aarch64-unknown-linux-gnu'
-            package-format: 'deb'
-
-          # Windows x86_64
           - os: windows
             arch: x86_64
             runner: windows-latest
-            build-target: 'x86_64-pc-windows-msvc'
-            package-format: 'exe'
+            target: x86_64-pc-windows-msvc
+
+          - os: macos
+            arch: x86_64
+            runner: macos-13
+            target: x86_64-apple-darwin
+
+          - os: macos
+            arch: aarch64
+            runner: macos-14
+            target: aarch64-apple-darwin
+
+          - os: linux
+            arch: x86_64
+            runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup GraalVM JDK
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '21'
+          distribution: 'graalvm-community'
+          cache: maven
+
+      - name: Build Native Backend
+        run: |
+          cd java/opentron-java/backend
+          PROFILE="native-$(echo "${{ matrix.os }}-${{ matrix.arch }}" | sed 's/-/_/g')"
+          mvn -DskipTests=true -P"$PROFILE" clean package
+        shell: bash
+
+      - name: Find Native Binary
+        id: native
+        run: |
+          cd java/opentron-java/backend/target
+          BINARY=$(ls opentron-backend-* 2>/dev/null | head -1)
+          if [ -z "$BINARY" ]; then
+            echo "ERROR: Native binary not found"
+            ls -la
+            exit 1
+          fi
+          echo "binary=$BINARY" >> $GITHUB_OUTPUT
+          echo "Found: $BINARY"
+        shell: bash
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'frontend/package-lock.json'
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: ${{ matrix.build-target }}
-          cache: true
+          targets: ${{ matrix.target }}
 
-      - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli
+      - name: Copy Native Binary to Sidecar
+        run: |
+          mkdir -p frontend/src-tauri/sidecar
+          cp "java/opentron-java/backend/target/${{ steps.native.outputs.binary }}" \
+             "frontend/src-tauri/sidecar/${{ steps.native.outputs.binary }}"
+          ls -lh frontend/src-tauri/sidecar/
+        shell: bash
 
       - name: Install Frontend Dependencies
         run: |
           cd frontend
-          npm ci
-
-      - name: Download Native Backend Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: frontend/src-tauri/sidecar
-          pattern: native-binary-${{ matrix.os }}-${{ matrix.arch }}
-
-      - name: Organize Native Binaries
-        run: |
-          mkdir -p frontend/src-tauri/sidecar
-          cd frontend/src-tauri/sidecar
-          
-          # Flatten artifact structure
-          find . -type f -name "opentron-backend-*" -exec mv {} . \;
-          find . -type d -empty -delete
-          
-          echo "=== Sidecar contents ==="
-          ls -la
-        shell: bash
+          npm ci --no-audit --no-fund
 
       - name: Build Frontend
         run: |
           cd frontend
           npm run build
 
-      - name: Build Tauri App
+      - name: Build Desktop App
         run: |
           cd frontend/src-tauri
-          cargo build --release --target ${{ matrix.build-target }}
-
-      - name: Create macOS App Bundle (Intel)
-        if: matrix.os == 'macos' && matrix.arch == 'x86_64'
-        run: |
-          cd frontend/src-tauri
-          cargo tauri build --target ${{ matrix.build-target }}
-
-      - name: Create macOS App Bundle (ARM64)
-        if: matrix.os == 'macos' && matrix.arch == 'aarch64'
-        run: |
-          cd frontend/src-tauri
-          cargo tauri build --target ${{ matrix.build-target }}
-
-      - name: Create Linux AppImage
-        if: matrix.os == 'linux' && matrix.package-format == 'appimage'
-        run: |
-          cd frontend/src-tauri
-          cargo tauri build --target ${{ matrix.build-target }}
-
-      - name: Create Linux DEB
-        if: matrix.os == 'linux' && matrix.package-format == 'deb'
-        run: |
-          cd frontend/src-tauri
-          cargo tauri build --target ${{ matrix.build-target }}
-
-      - name: Create Windows EXE
-        if: matrix.os == 'windows'
-        run: |
-          cd frontend/src-tauri
-          cargo tauri build --target ${{ matrix.build-target }}
-
-      - name: Upload App Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-${{ matrix.os }}-${{ matrix.arch }}
-          path: frontend/src-tauri/target/${{ matrix.build-target }}/release/bundle/
-          retention-days: 30
-
-      - name: List Build Outputs
-        run: |
-          echo "=== Build Output ==="
-          find frontend/src-tauri/target/${{ matrix.build-target }}/release/bundle -type f
+          cargo tauri build --target ${{ matrix.target }}
         shell: bash
 
-  sign-macos:
-    name: Code Sign macOS Builds
-    needs: build-desktop
-    runs-on: macos-latest
-    if: startsWith(github.ref, 'refs/tags/')
+      - name: Find Installer
+        id: installer
+        run: |
+          find frontend/src-tauri/target/${{ matrix.target }}/release/bundle -type f \
+            \( -name "*.msi" -o -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" \) \
+            | head -1 | xargs -I {} echo "path={}" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            frontend/src-tauri/target/${{ matrix.target }}/release/bundle/**/*(*.msi|*.exe|*.dmg|*.AppImage|*.deb)
+          retention-days: 1
+
+  create-release:
+    name: Create Release
+    needs: build-and-bundle
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download macOS Build Artifacts
+      - name: Download All Installers
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
-          pattern: 'app-macos-*'
+          path: installers
 
-      - name: Import Signing Certificate
-        uses: apple-actions/import-codesign-certs@v2
-        with:
-          p12-file-base64: ${{ secrets.MACOS_SIGNING_CERT }}
-          p12-password: ${{ secrets.MACOS_SIGNING_CERT_PASSWORD }}
-        if: secrets.MACOS_SIGNING_CERT != ''
-
-      - name: Sign and Notarize macOS Apps
+      - name: Prepare Release Files
         run: |
-          # This is a placeholder - actual signing/notarization requires Apple developer account
-          echo "Code signing would happen here with:"
-          echo "  codesign -s - --deep artifacts/*/macOS/*.app"
-          echo "  xcrun altool --notarize-app ..."
-        if: secrets.MACOS_SIGNING_CERT != ''
-
-  test-builds:
-    name: Test App Build
-    needs: build-desktop
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      matrix:
-        include:
-          - os: macos
-            runner: macos-latest
-          - os: linux
-            runner: ubuntu-latest
-          - os: windows
-            runner: windows-latest
-    steps:
-      - name: Download Build Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Verify Artifacts Exist
-        run: |
-          find artifacts -type f | head -20
+          mkdir -p release
+          find installers -type f \
+            \( -name "*.msi" -o -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" \) \
+            -exec cp {} release/ \;
+          cd release
+          sha256sum * > CHECKSUMS.sha256
+          ls -lh
         shell: bash
 
-      - name: Check Bundle Integrity
-        run: |
-          echo "=== Artifact Summary ==="
-          find artifacts -type f -name "*.app" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.dmg" | sort
-        shell: bash
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') }}
+          body: |
+            # Tron ${{ github.ref_name }}
+            
+            Ready-to-install desktop application with bundled native backend.
+            
+            ## Download
+            
+            - **Windows**: OpenTron.msi or OpenTron.exe
+            - **macOS**: OpenTron-x86_64.dmg or OpenTron-aarch64.dmg
+            - **Linux**: OpenTron.AppImage or OpenTron.deb
+            
+            ## Installation
+            
+            Just download and run. No Java or other dependencies needed.

@@ -31,6 +31,12 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": false,
+    "sidecar": [
+      {
+        "name": "opentron-backend",
+        "shell": false
+      }
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -44,7 +50,6 @@
     "macOS": {
       "entitlements": "Entitlements.plist",
       "minimumSystemVersion": "10.15",
-      "exceptionDomain": "",
       "frameworks": [],
       "providerShortName": null,
       "signingIdentity": "-"
