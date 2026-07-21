@@ -108,36 +108,35 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Build Frontend
+      - name: NPM Install
         run: |
           cd frontend
           npm ci --no-audit --no-fund
-          npm run build
         shell: cmd
 
-      - name: Check Frontend Build
-        run: |
-          dir frontend\dist
-        shell: cmd
-
-      - name: Build Desktop
+      - name: TypeScript Compile
         run: |
           cd frontend
-          npm run tauri build 2>&1
+          npx tsc -b
         shell: cmd
 
-      - name: Copy Installers
+      - name: Vite Build
         run: |
-          mkdir dist
-          dir frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle
-          for /r "frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle" %%F in (*.msi *.exe) do copy "%%F" dist\
+          cd frontend
+          npx vite build --outDir dist
+        shell: cmd
+
+      - name: Tauri Build
+        run: |
+          cd frontend
+          npm run tauri build
         shell: cmd
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
           name: installer-windows
-          path: dist/
+          path: frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/
           retention-days: 1
 
   release:
