@@ -22,35 +22,35 @@ jobs:
           - os: linux
             arch: x86_64
             runner: ubuntu-latest
-            graalvm-version: '21.1.0'
+            graalvm-version: '21'
             java-version: '21'
 
           # Linux ARM64
           - os: linux
             arch: aarch64
             runner: ubuntu-latest
-            graalvm-version: '21.1.0'
+            graalvm-version: '21'
             java-version: '21'
 
           # macOS x86_64
           - os: macos
             arch: x86_64
             runner: macos-13
-            graalvm-version: '21.1.0'
+            graalvm-version: '21'
             java-version: '21'
 
           # macOS ARM64 (Apple Silicon)
           - os: macos
             arch: aarch64
             runner: macos-14
-            graalvm-version: '21.1.0'
+            graalvm-version: '21'
             java-version: '21'
 
           # Windows x86_64
           - os: windows
             arch: x86_64
             runner: windows-latest
-            graalvm-version: '21.1.0'
+            graalvm-version: '21'
             java-version: '21'
 
     steps:
@@ -60,26 +60,38 @@ jobs:
         uses: graalvm/setup-graalvm@v1
         with:
           java-version: ${{ matrix.java-version }}
-          distribution: 'graalvm'
+          distribution: 'graalvm-community'
           cache: maven
+          native-image-job-reports: 'true'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify GraalVM
+      - name: Verify GraalVM Installation
         run: |
           java -version
           native-image --version
+        shell: bash
 
       - name: Build Native Backend
         run: |
           cd java/opentron-java/backend
-          mvn -DskipTests=true clean package
+          mvn -DskipTests=true -Pnative-$(echo "${{ matrix.os }}-${{ matrix.arch }}" | tr '-' '-') clean package 2>&1 | tee build.log
+          
+          # Extract final result
+          if grep -q "BUILD SUCCESS" build.log; then
+            echo "BUILD_STATUS=SUCCESS" >> $GITHUB_ENV
+          else
+            echo "BUILD_STATUS=FAILURE" >> $GITHUB_ENV
+          fi
         shell: bash
 
       - name: List Build Artifacts
+        if: always()
         run: |
-          ls -la java/opentron-java/backend/target/
+          ls -lah java/opentron-java/backend/target/ 2>/dev/null | grep -E "opentron-backend|\.exe|^d" || echo "No artifacts yet"
         shell: bash
 
       - name: Upload Native Binary Artifact
+        if: env.BUILD_STATUS == 'SUCCESS'
         uses: actions/upload-artifact@v4
         with:
           name: native-binary-${{ matrix.os }}-${{ matrix.arch }}
@@ -88,7 +100,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload to Release (if tagged)
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && env.BUILD_STATUS == 'SUCCESS'
         uses: softprops/action-gh-release@v1
         with:
           files: java/opentron-java/backend/target/opentron-backend-*
@@ -99,6 +111,7 @@ jobs:
     name: Verify Build Artifacts
     needs: build-native
     runs-on: ubuntu-latest
+    if: always()
     steps:
       - name: Download All Artifacts
         uses: actions/download-artifact@v4
