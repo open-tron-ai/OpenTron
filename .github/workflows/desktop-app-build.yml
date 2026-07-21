@@ -132,11 +132,17 @@ jobs:
           npm run tauri build
         shell: cmd
 
+      - name: Find Installers
+        run: |
+          echo Searching for installers...
+          dir /s /b frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle | findstr /i ".msi .exe"
+        shell: cmd
+
       - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
           name: installer-windows
-          path: frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/
+          path: frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/
           retention-days: 1
 
   release:
