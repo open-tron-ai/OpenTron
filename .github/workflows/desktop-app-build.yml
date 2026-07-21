@@ -132,68 +132,56 @@ jobs:
           npm run tauri build
         shell: cmd
 
-      - name: List Build Output
-        run: |
-          echo Looking for installers...
-          for /r "frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle" %%F in (*.msi) do echo Found MSI: %%F
-          for /r "frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle" %%F in (*.exe) do echo Found EXE: %%F
-        shell: cmd
-
-      - name: Upload MSI Installer
+      - name: Upload Installers
         uses: actions/upload-artifact@v4
         with:
-          name: windows-msi
-          path: frontend/src-tauri/target/release/bundle/msi/*.msi
-          retention-days: 1
-
-      - name: Upload NSIS Installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-nsis
-          path: frontend/src-tauri/target/release/bundle/nsis/*.exe
+          name: installers
+          path: |
+            frontend/src-tauri/target/release/bundle/msi/*.msi
+            frontend/src-tauri/target/release/bundle/nsis/*.exe
           retention-days: 1
 
   release:
     name: Create GitHub Release
     needs: build-desktop-windows
     runs-on: ubuntu-latest
-    if: always()
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download MSI
+      - name: Download Installers
         uses: actions/download-artifact@v4
         with:
-          name: windows-msi
-          path: release
-        continue-on-error: true
+          name: installers
+          path: installers
 
-      - name: Download NSIS
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-nsis
-          path: release
-        continue-on-error: true
-
-      - name: List Release Files
+      - name: Verify Files
         run: |
-          ls -la release/
-        shell: bash
+          echo "Files in installers directory:"
+          ls -lh installers/ || echo "No installers directory"
+          find . -name "*.msi" -o -name "*.exe" 2>/dev/null || echo "No MSI/EXE found"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*
+          files: |
+            installers/*.msi
+            installers/*.exe
           draft: false
           body: |
             # OpenTron v${{ github.ref_name }}
             
-            Production-ready desktop application with zero external dependencies.
+            Production-ready desktop application - zero external dependencies
             
-            - Windows MSI installer
-            - Windows NSIS portable executable
-            - Includes Java 21 Runtime, Spring Boot backend with H2 database
+            **What's Included:**
+            - Java 21 Runtime (minimal JRE via jlink)
+            - Spring Boot 3.1 Backend with H2 embedded database
+            - React 19 + Tauri Frontend
+            - 6 AI Agents + 14 Connector Integrations
             
-            Simply download and run - no installation required.
+            **Installation:**
+            - Windows: Download .msi or .exe and run
+            - No Java, Docker, or PostgreSQL required
+            
+            Data stored locally at: ~/.opentron/opentron.h2
