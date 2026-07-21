@@ -101,7 +101,7 @@ jobs:
 
       - name: Upload to Release (if tagged)
         if: startsWith(github.ref, 'refs/tags/') && env.BUILD_STATUS == 'SUCCESS'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: java/opentron-java/backend/target/opentron-backend-*
           draft: false
