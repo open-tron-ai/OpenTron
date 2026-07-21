@@ -166,31 +166,39 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- GraalVM Native Image Build (Platform-Specific) -->
-            <plugin>
-                <groupId>org.graalvm.buildtools</groupId>
-                <artifactId>native-maven-plugin</artifactId>
-                <version>0.10.2</version>
-                <extensions>true</extensions>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile-no-fork</goal>
-                        </goals>
-                        <phase>package</phase>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skipTests>true</skipTests>
-                    <imageName>opentron-backend</imageName>
-                    <mainClass>org.opentron.backend.OpentronBackendApplication</mainClass>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 
-    <!-- Platform-specific native-image build profiles -->
+    <!-- Platform-specific native-image build profiles (GraalVM only) -->
     <profiles>
+        <profile>
+            <id>native</id>
+            <build>
+                <plugins>
+                    <!-- GraalVM Native Image Build (Only when explicitly activated) -->
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <version>0.10.2</version>
+                        <extensions>true</extensions>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <skipTests>true</skipTests>
+                            <imageName>opentron-backend</imageName>
+                            <mainClass>org.opentron.backend.OpentronBackendApplication</mainClass>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <profile>
             <id>native-linux-x86_64</id>
             <activation>
@@ -204,13 +212,26 @@
                     <plugin>
                         <groupId>org.graalvm.buildtools</groupId>
                         <artifactId>native-maven-plugin</artifactId>
+                        <version>0.10.2</version>
+                        <extensions>true</extensions>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
                         <configuration>
+                            <skipTests>true</skipTests>
                             <imageName>opentron-backend-linux-x86_64</imageName>
+                            <mainClass>org.opentron.backend.OpentronBackendApplication</mainClass>
                         </configuration>
                     </plugin>
                 </plugins>
             </build>
         </profile>
+
         <profile>
             <id>native-linux-aarch64</id>
             <activation>
@@ -224,13 +245,26 @@
                     <plugin>
                         <groupId>org.graalvm.buildtools</groupId>
                         <artifactId>native-maven-plugin</artifactId>
+                        <version>0.10.2</version>
+                        <extensions>true</extensions>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
                         <configuration>
+                            <skipTests>true</skipTests>
                             <imageName>opentron-backend-linux-aarch64</imageName>
+                            <mainClass>org.opentron.backend.OpentronBackendApplication</mainClass>
                         </configuration>
                     </plugin>
                 </plugins>
             </build>
         </profile>
+
         <profile>
             <id>native-macos-x86_64</id>
             <activation>
@@ -244,13 +278,26 @@
                     <plugin>
                         <groupId>org.graalvm.buildtools</groupId>
                         <artifactId>native-maven-plugin</artifactId>
+                        <version>0.10.2</version>
+                        <extensions>true</extensions>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
                         <configuration>
+                            <skipTests>true</skipTests>
                             <imageName>opentron-backend-macos-x86_64</imageName>
+                            <mainClass>org.opentron.backend.OpentronBackendApplication</mainClass>
                         </configuration>
                     </plugin>
                 </plugins>
             </build>
         </profile>
+
         <profile>
             <id>native-macos-aarch64</id>
             <activation>
@@ -264,13 +311,26 @@
                     <plugin>
                         <groupId>org.graalvm.buildtools</groupId>
                         <artifactId>native-maven-plugin</artifactId>
+                        <version>0.10.2</version>
+                        <extensions>true</extensions>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
                         <configuration>
+                            <skipTests>true</skipTests>
                             <imageName>opentron-backend-macos-aarch64</imageName>
+                            <mainClass>org.opentron.backend.OpentronBackendApplication</mainClass>
                         </configuration>
                     </plugin>
                 </plugins>
             </build>
         </profile>
+
         <profile>
             <id>native-windows-x86_64</id>
             <activation>
@@ -284,8 +344,20 @@
                     <plugin>
                         <groupId>org.graalvm.buildtools</groupId>
                         <artifactId>native-maven-plugin</artifactId>
+                        <version>0.10.2</version>
+                        <extensions>true</extensions>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
                         <configuration>
+                            <skipTests>true</skipTests>
                             <imageName>opentron-backend-windows-x86_64.exe</imageName>
+                            <mainClass>org.opentron.backend.OpentronBackendApplication</mainClass>
                         </configuration>
                     </plugin>
                 </plugins>
