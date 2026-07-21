@@ -126,8 +126,13 @@ jobs:
 
       - name: List Build Output
         run: |
-          echo Windows build completed successfully
-          dir frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle /s
+          echo Checking for build artifacts...
+          if exist frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle (
+            dir /s frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle
+          ) else (
+            echo Bundle directory not found. Listing target directory:
+            dir /s frontend\src-tauri\target\x86_64-pc-windows-msvc\release
+          )
         shell: cmd
 
       - name: Upload Installer
