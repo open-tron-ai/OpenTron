@@ -32,7 +32,7 @@ jobs:
             exit 1
           fi
           cp "$JAR" /tmp/backend.jar
-          echo "✓ JAR built successfully"
+          echo "JAR built successfully"
           ls -lh /tmp/backend.jar
         shell: bash
 
@@ -66,14 +66,14 @@ jobs:
             --output /tmp/minimal-jre
           
           SIZE=$(du -sh /tmp/minimal-jre | awk '{print $1}')
-          echo "✓ Minimal JRE: $SIZE"
+          echo "Minimal JRE: $SIZE"
         shell: bash
 
       - name: Archive JRE
         run: |
           cd /tmp
           tar -czf minimal-jre.tar.gz minimal-jre/
-          echo "✓ Archive created: $(ls -lh minimal-jre.tar.gz | awk '{print $5}')"
+          echo "Archive created: $(ls -lh minimal-jre.tar.gz | awk '{print $5}')"
         shell: bash
 
       - name: Upload JRE
@@ -103,14 +103,14 @@ jobs:
           path: jre-download
 
       - name: Setup Sidecar (Backend + JRE)
-        shell: powershell
+        shell: cmd
         run: |
-          New-Item -ItemType Directory -Force -Path frontend\src-tauri\sidecar
-          Copy-Item backend-download\backend.jar frontend\src-tauri\sidecar\
+          mkdir frontend\src-tauri\sidecar
+          copy backend-download\backend.jar frontend\src-tauri\sidecar\
           cd jre-download
           tar -xzf minimal-jre.tar.gz
-          Move-Item minimal-jre ..\frontend\src-tauri\sidecar\jre
-          Write-Host "✓ Sidecar ready"
+          move minimal-jre ..\frontend\src-tauri\sidecar\jre
+          echo Sidecar ready
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -123,22 +123,22 @@ jobs:
           targets: x86_64-pc-windows-msvc
 
       - name: Build Frontend
-        shell: powershell
+        shell: cmd
         run: |
           cd frontend
-          npm ci --no-audit --no-fund
-          npm run build
+          call npm ci --no-audit --no-fund
+          call npm run build
 
       - name: Build Desktop (Windows)
-        shell: powershell
+        shell: cmd
         run: |
-          cd frontend/src-tauri
+          cd frontend\src-tauri
           cargo tauri build --target x86_64-pc-windows-msvc
 
       - name: Verify Installer
-        shell: powershell
+        shell: cmd
         run: |
-          Get-ChildItem -Path frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle -Recurse -File | Where-Object { $_.Length -gt 10MB } | Select-Object FullName, @{N="Size(MB)";E={[math]::Round($_.Length/1MB,2)}}
+          dir frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle /s
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
@@ -175,7 +175,7 @@ jobs:
           cd jre-download
           tar -xzf minimal-jre.tar.gz
           mv minimal-jre ../frontend/src-tauri/sidecar/jre
-          echo "✓ Sidecar ready"
+          echo "Sidecar ready"
         shell: bash
 
       - name: Setup Node.js
@@ -236,7 +236,7 @@ jobs:
           cd jre-download
           tar -xzf minimal-jre.tar.gz
           mv minimal-jre ../frontend/src-tauri/sidecar/jre
-          echo "✓ Sidecar ready"
+          echo "Sidecar ready"
         shell: bash
 
       - name: Setup Node.js
@@ -297,7 +297,7 @@ jobs:
           cd jre-download
           tar -xzf minimal-jre.tar.gz
           mv minimal-jre ../frontend/src-tauri/sidecar/jre
-          echo "✓ Sidecar ready"
+          echo "Sidecar ready"
         shell: bash
 
       - name: Setup Node.js
@@ -391,36 +391,18 @@ jobs:
           body: |
             # OpenTron v${{ github.ref_name }}
             
-            **Production-ready desktop application. Everything bundled - zero external dependencies.**
+            Production-ready desktop application. Everything bundled - zero external dependencies.
             
-            ## Download & Install
+            Download & Install
             
-            ### Windows
-            - `OpenTron.msi` - Standard installer
-            - `OpenTron.exe` - Portable executable
+            Windows: Double-click .msi
+            macOS: Drag to Applications
+            Linux: chmod +x OpenTron.AppImage && ./OpenTron.AppImage
             
-            ### macOS
-            - `OpenTron-x86_64.dmg` - Intel Macs (10.15+)
-            - `OpenTron-arm64.dmg` - Apple Silicon (11.0+)
+            Bundled:
+            - Java 21 Runtime (50MB minimal JRE)
+            - Spring Boot 3.1 Backend with H2 database
+            - React 19 + Tauri Frontend
+            - Zero external dependencies
             
-            ### Linux
-            - `OpenTron.AppImage` - Universal executable
-            - `OpenTron.deb` - Debian/Ubuntu
-            
-            ## What's Bundled
-            
-            ✅ Java 21 Runtime (~50MB minimal JRE via jlink)
-            ✅ Spring Boot 3.1 Backend (H2 embedded database)
-            ✅ React 19 + Tauri Frontend
-            ✅ 6 AI Agents + 14 Connectors
-            ✅ Zero external dependencies
-            
-            ## Installation
-            
-            **Windows:** Double-click `.msi`
-            **macOS:** Drag to Applications
-            **Linux:** `chmod +x OpenTron.AppImage && ./OpenTron.AppImage`
-            
-            Data stored locally: `~/.opentron/opentron.h2` (H2 database)
-            
-            No Java, Docker, or PostgreSQL installation required.
+            Data stored at ~/.opentron/opentron.h2
