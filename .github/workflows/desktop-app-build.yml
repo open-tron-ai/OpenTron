@@ -132,13 +132,18 @@ jobs:
           npm run tauri build
         shell: cmd
 
-      - name: Upload Installers
+      - name: Upload MSI Installer
         uses: actions/upload-artifact@v4
         with:
-          name: installers
-          path: |
-            frontend/src-tauri/target/release/bundle/msi/*.msi
-            frontend/src-tauri/target/release/bundle/nsis/*.exe
+          name: installer-windows-msi
+          path: frontend/src-tauri/target/release/bundle/msi/
+          retention-days: 1
+
+      - name: Upload NSIS Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows-nsis
+          path: frontend/src-tauri/target/release/bundle/nsis/
           retention-days: 1
 
   release:
@@ -150,37 +155,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Installers
+      - name: Download MSI
         uses: actions/download-artifact@v4
         with:
-          name: installers
-          path: installers
+          name: installer-windows-msi
+          path: release
+
+      - name: Download NSIS
+        uses: actions/download-artifact@v4
+        with:
+          name: installer-windows-nsis
+          path: release
 
       - name: Verify Files
         run: |
-          echo "Files in installers directory:"
-          ls -lh installers/
-          echo "Total files: $(ls -1 installers | wc -l)"
-          [ $(ls -1 installers | wc -l) -gt 0 ] || (echo "ERROR: No installers found" && exit 1)
+          echo "Installers found:"
+          ls -lh release/
+          [ -f release/*.msi ] && echo "MSI found" || echo "ERROR: No MSI"
+          [ -f release/*.exe ] && echo "EXE found" || echo "ERROR: No EXE"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: installers/*
+          files: release/*
           draft: false
           body: |
             # OpenTron v${{ github.ref_name }}
             
             Production-ready desktop application - zero external dependencies
             
-            **What's Included:**
-            - Java 21 Runtime (minimal JRE via jlink)
-            - Spring Boot 3.1 Backend with H2 embedded database
+            **Included:**
+            - Java 21 Runtime (minimal JRE)
+            - Spring Boot 3.1 + H2 Database
             - React 19 + Tauri Frontend
-            - 6 AI Agents + 14 Connector Integrations
             
-            **Installation:**
-            - Windows: Download .msi or .exe and run
-            - No Java, Docker, or PostgreSQL required
-            
-            Data stored locally at: ~/.opentron/opentron.h2
+            **Windows Installation:**
+            Download .msi or .exe and run - no setup required
