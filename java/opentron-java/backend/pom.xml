@@ -169,44 +169,16 @@
         </plugins>
     </build>
 
-    <!-- Platform-specific native-image build profiles (GraalVM only) -->
+    <!-- 
+         Native image build profiles (opt-in only, requires GraalVM JDK)
+         Activate with: mvn -Pnative-linux-x86_64 package
+         or: mvn -Pnative-macos-x86_64 package
+         etc.
+    -->
     <profiles>
-        <profile>
-            <id>native</id>
-            <build>
-                <plugins>
-                    <!-- GraalVM Native Image Build (Only when explicitly activated) -->
-                    <plugin>
-                        <groupId>org.graalvm.buildtools</groupId>
-                        <artifactId>native-maven-plugin</artifactId>
-                        <version>0.10.2</version>
-                        <extensions>true</extensions>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>compile-no-fork</goal>
-                                </goals>
-                                <phase>package</phase>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <skipTests>true</skipTests>
-                            <imageName>opentron-backend</imageName>
-                            <mainClass>org.opentron.backend.OpentronBackendApplication</mainClass>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
+        <!-- Linux x86_64 native build -->
         <profile>
             <id>native-linux-x86_64</id>
-            <activation>
-                <os>
-                    <name>linux</name>
-                    <arch>amd64</arch>
-                </os>
-            </activation>
             <build>
                 <plugins>
                     <plugin>
@@ -232,14 +204,9 @@
             </build>
         </profile>
 
+        <!-- Linux ARM64 native build -->
         <profile>
             <id>native-linux-aarch64</id>
-            <activation>
-                <os>
-                    <name>linux</name>
-                    <arch>aarch64</arch>
-                </os>
-            </activation>
             <build>
                 <plugins>
                     <plugin>
@@ -265,14 +232,9 @@
             </build>
         </profile>
 
+        <!-- macOS Intel x86_64 native build -->
         <profile>
             <id>native-macos-x86_64</id>
-            <activation>
-                <os>
-                    <name>mac os x</name>
-                    <arch>x86_64</arch>
-                </os>
-            </activation>
             <build>
                 <plugins>
                     <plugin>
@@ -298,14 +260,9 @@
             </build>
         </profile>
 
+        <!-- macOS ARM64 native build -->
         <profile>
             <id>native-macos-aarch64</id>
-            <activation>
-                <os>
-                    <name>mac os x</name>
-                    <arch>aarch64</arch>
-                </os>
-            </activation>
             <build>
                 <plugins>
                     <plugin>
@@ -331,14 +288,9 @@
             </build>
         </profile>
 
+        <!-- Windows x86_64 native build -->
         <profile>
             <id>native-windows-x86_64</id>
-            <activation>
-                <os>
-                    <name>windows</name>
-                    <arch>amd64</arch>
-                </os>
-            </activation>
             <build>
                 <plugins>
                     <plugin>
