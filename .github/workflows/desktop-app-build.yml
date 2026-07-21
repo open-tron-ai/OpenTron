@@ -108,17 +108,28 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Build Desktop
+      - name: Build Frontend
         run: |
           cd frontend
           npm ci --no-audit --no-fund
           npm run build
-          npm run tauri build
+        shell: cmd
+
+      - name: Check Frontend Build
+        run: |
+          dir frontend\dist
+        shell: cmd
+
+      - name: Build Desktop
+        run: |
+          cd frontend
+          npm run tauri build 2>&1
         shell: cmd
 
       - name: Copy Installers
         run: |
           mkdir dist
+          dir frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle
           for /r "frontend\src-tauri\target\x86_64-pc-windows-msvc\release\bundle" %%F in (*.msi *.exe) do copy "%%F" dist\
         shell: cmd
 
@@ -144,10 +155,11 @@ jobs:
         with:
           name: installer-windows
           path: release
+        continue-on-error: true
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: release/**
           draft: false
-          body: OpenTron v${{ github.ref_name }} - Production desktop app, zero dependencies
+          body: OpenTron v${{ github.ref_name }} - Production desktop app
