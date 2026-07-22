@@ -98,11 +98,11 @@ public class ModelSelectorService {
      * Prefers: neural-chat (code-optimized) > qwen3:8b > qwen3.5:9b > mistral
      */
     private String selectFrontendModel() {
-        // String cloudModel = selectCloudModel(getPreferredCloudModels());
-        // if (cloudModel != null) {
-        //     logger.info("Frontend → {} (cloud model)", cloudModel);
-        //     return cloudModel;
-        // }
+        String cloudModel = selectCloudModel(getPreferredCloudModels());
+        if (cloudModel != null) {
+            logger.info("Frontend → {} (cloud model)", cloudModel);
+            return cloudModel;
+        }
         if (hasModel("neural-chat")) {
             logger.info("Frontend → neural-chat (React expert)");
             return "neural-chat";
@@ -124,11 +124,11 @@ public class ModelSelectorService {
      * Prefers: neural-chat (code review expert) > qwen3.5:2b (very fast) > mistral
      */
     private String selectQAModel() {
-        // String cloudModel = selectCloudModel(getPreferredCloudModels());
-        // if (cloudModel != null) {
-        //     logger.info("QA → {} (cloud model)", cloudModel);
-        //     return cloudModel;
-        // }
+        String cloudModel = selectCloudModel(getPreferredCloudModels());
+        if (cloudModel != null) {
+            logger.info("QA → {} (cloud model)", cloudModel);
+            return cloudModel;
+        }
         if (hasModel("neural-chat")) {
             logger.info("QA → neural-chat (code review)");
             return "neural-chat";
