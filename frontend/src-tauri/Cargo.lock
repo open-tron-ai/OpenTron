@@ -4977,6 +4977,7 @@ version = "1.0.1"
 dependencies = [
  "dispatch",
  "objc",
+ "open",
  "reqwest 0.12.28",
  "serde",
  "serde_json",

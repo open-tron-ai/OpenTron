@@ -1,4 +1,4 @@
-﻿import type { ModelInfo, SavingsData, ServerInfo } from '../types';
+import type { ModelInfo, SavingsData, ServerInfo } from '../types';
 
 // Supabase config
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://mtbtgpwzrbostweaanpr.supabase.co';
@@ -156,14 +156,7 @@ export async function getSetupStatus(): Promise<SetupStatus | null> {
 
 // Models
 export async function fetchModels(): Promise<ModelInfo[]> {
-  if (isTauri()) {
-    try {
-      const result = await tauriInvoke<{ data?: ModelInfo[] }>('fetch_models');
-      return result?.data || [];
-    } catch {
-      // Fall through
-    }
-  }
+  // Always use HTTP API
   const res = await apiFetch(`/v1/models`);
   if (!res.ok) throw new Error(`Failed to fetch models: ${res.status}`);
   const data = await res.json();
@@ -177,15 +170,7 @@ export async function fetchRecommendedModel(): Promise<{ model: string; reason: 
 }
 
 export async function pullModel(modelName: string): Promise<string> {
-  if (isTauri()) {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('pull_ollama_model', { modelName });
-      return '';
-    } catch (e: any) {
-      throw new Error(e?.message || e || 'Download failed');
-    }
-  }
+  // Always use HTTP API - Tauri command not available
   const res = await apiFetch(`/v1/models/pull`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

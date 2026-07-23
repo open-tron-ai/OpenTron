@@ -24,6 +24,47 @@ function applyTheme() {
 
 applyTheme();
 
+// Intercept all external links globally and open in system browser
+function setupLinkInterceptor() {
+  document.addEventListener('click', async (e) => {
+    const target = (e.target as Element)?.closest('a');
+    if (!target) return;
+
+    const href = target.getAttribute('href');
+    if (!href) return;
+
+    // Only intercept http/https external links
+    if (!href.startsWith('http://') && !href.startsWith('https://')) {
+      return;
+    }
+
+    // Check if it's localhost (internal) - allow it
+    try {
+      const url = new URL(href);
+      if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+        return;
+      }
+
+      // External link - prevent default and open in system browser
+      e.preventDefault();
+      e.stopPropagation();
+
+      try {
+        const { open } = await import('@tauri-apps/plugin-shell');
+        await open(href);
+      } catch (err) {
+        console.error('Failed to open URL:', err);
+        // Fallback to window.open
+        window.open(href, '_blank');
+      }
+    } catch (err) {
+      console.error('Failed to parse URL:', err);
+    }
+  }, true); // Use capture phase to intercept before other handlers
+}
+
+setupLinkInterceptor();
+
 // Fetch the API base URL from the Tauri backend before rendering.
 // This ensures TRON_PORT is defined in one place (the Rust backend).
 // In non-Tauri environments this is a no-op.

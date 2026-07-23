@@ -285,6 +285,11 @@ async fn fetch_agents(api_url: String) -> Result<serde_json::Value, String> {
     }
 }
 
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    open::that(&url).map_err(|e| format!("Failed to open URL: {}", e))
+}
+
 // ============================================================================
 // App Entry Point
 // ============================================================================
@@ -363,6 +368,7 @@ pub fn run() {
             fetch_server_info,
             fetch_savings,
             fetch_agents,
+            open_external_url,
         ])
         .build(tauri::generate_context!())
         .expect("error while building OpenTron Desktop")

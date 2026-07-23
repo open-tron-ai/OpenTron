@@ -129,6 +129,15 @@ public class SkillBasedOrchestrator {
             skills.add("search_emails");
         }
 
+        // Internet-enabled skills (available across all domains)
+        if (lower.contains("fetch")|| lower.contains("search") || lower.contains("download") || lower.contains("api") ||
+            lower.contains("external") || lower.contains("internet") || lower.contains("web") ||
+            lower.contains("browse") || lower.contains("research") || lower.contains("look up")) {
+            skills.add("web_research");
+            skills.add("api_integration");
+            skills.add("fetch_external_content");
+        }
+
         // Default: code + frontend
         if (skills.isEmpty()) {
             skills.add("java_optimization");
@@ -305,6 +314,10 @@ public class SkillBasedOrchestrator {
             skillToDomain.put("api_design", "CODE");
             skillToDomain.put("persistence_layer", "CODE");
             skillToDomain.put("concurrent_programming", "CODE");
+            // Internet-enabled skills for CODE domain
+            skillToDomain.put("web_research", "CODE");
+            skillToDomain.put("api_integration", "CODE");
+            skillToDomain.put("fetch_external_content", "CODE");
 
             // FRONTEND domain
             skillToDomain.put("react_optimization", "FRONTEND");
@@ -312,12 +325,20 @@ public class SkillBasedOrchestrator {
             skillToDomain.put("state_management", "FRONTEND");
             skillToDomain.put("performance_tuning", "FRONTEND");
             skillToDomain.put("bundle_optimization", "FRONTEND");
+            // Internet-enabled skills for FRONTEND domain
+            skillToDomain.put("web_research", "FRONTEND");
+            skillToDomain.put("api_integration", "FRONTEND");
+            skillToDomain.put("fetch_external_content", "FRONTEND");
 
             // WEBDESIGN domain
             skillToDomain.put("css_optimization", "WEBDESIGN");
             skillToDomain.put("responsive_design", "WEBDESIGN");
             skillToDomain.put("accessibility", "WEBDESIGN");
             skillToDomain.put("ui_design", "WEBDESIGN");
+            // Internet-enabled skills for WEBDESIGN domain
+            skillToDomain.put("web_research", "WEBDESIGN");
+            skillToDomain.put("api_integration", "WEBDESIGN");
+            skillToDomain.put("fetch_external_content", "WEBDESIGN");
 
             // QA domain
             skillToDomain.put("unit_testing", "QA");
@@ -327,6 +348,10 @@ public class SkillBasedOrchestrator {
             skillToDomain.put("regression_testing", "QA");
             skillToDomain.put("performance_testing", "QA");
             skillToDomain.put("security_testing", "QA");
+            // Internet-enabled skills for QA domain
+            skillToDomain.put("web_research", "QA");
+            skillToDomain.put("api_integration", "QA");
+            skillToDomain.put("fetch_external_content", "QA");
 
             // KNOWLEDGE domain
             skillToDomain.put("search_memory",    "KNOWLEDGE");
@@ -335,6 +360,10 @@ public class SkillBasedOrchestrator {
             skillToDomain.put("search_notes",     "KNOWLEDGE");
             skillToDomain.put("search_calendar",  "KNOWLEDGE");
             skillToDomain.put("search_contacts",  "KNOWLEDGE");
+            // Internet-enabled skills for KNOWLEDGE domain
+            skillToDomain.put("web_research", "KNOWLEDGE");
+            skillToDomain.put("api_integration", "KNOWLEDGE");
+            skillToDomain.put("fetch_external_content", "KNOWLEDGE");
 
             // DEVOPS domain
             skillToDomain.put("performance_monitoring", "DEVOPS");
@@ -342,6 +371,10 @@ public class SkillBasedOrchestrator {
             skillToDomain.put("health_checks", "DEVOPS");
             skillToDomain.put("alerting", "DEVOPS");
             skillToDomain.put("log_aggregation", "DEVOPS");
+            // Internet-enabled skills for DEVOPS domain
+            skillToDomain.put("web_research", "DEVOPS");
+            skillToDomain.put("api_integration", "DEVOPS");
+            skillToDomain.put("fetch_external_content", "DEVOPS");
         }
 
         public String getDomain(String skill) {

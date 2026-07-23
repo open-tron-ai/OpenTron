@@ -263,8 +263,35 @@ public class MultiAgentCoordinator {
                                                        List<String> focus, List<String> ignore,
                                                        List<String> constraints, String agentKey,
                                                        StreamingCoordinatorCallback callback) {
+
+            String internetSearchPrompt = "Act as an expert internet researcher.\r\n" + //
+                                "\r\n" + //
+                                "Conduct a deep web investigation on [TOPIC].\r\n" + //
+                                "\r\n" + //
+                                "Use only authoritative sources whenever possible.\r\n" + //
+                                "\r\n" + //
+                                "Methodology:\r\n" + //
+                                "1. Search broadly.\r\n" + //
+                                "2. Verify important claims with multiple sources.\r\n" + //
+                                "3. Locate official documentation and primary sources.\r\n" + //
+                                "4. Identify misinformation or unverified claims.\r\n" + //
+                                "5. Compare competing perspectives objectively.\r\n" + //
+                                "6. Present findings with citations and links.\r\n" + //
+                                "\r\n" + //
+                                "Deliver:\r\n" + //
+                                "- Executive summary\r\n" + //
+                                "- Detailed analysis\r\n" + //
+                                "- Evidence table\r\n" + //
+                                "- Key insights\r\n" + //
+                                "- Risks and limitations\r\n" + //
+                                "- Source list\r\n" + //
+                                "\r\n" + //
+                                "Do not make assumptions.\r\n" + //
+                                "Clearly distinguish verified facts from opinions." +
+                                "You have internet access and can fetch external content, perform google search, research topics, and integrate with APIs. ";                                                        
             String systemPrompt = "You are a " + role + ". Solve only the relevant domain. "
                     + "Stay concise and use the provided context. "
+                    + internetSearchPrompt + " "
                     + "Focus on: " + String.join(", ", focus.isEmpty() ? List.of("the core request") : focus) + ". "
                     + (ignore.isEmpty()      ? "" : "Do not address: " + String.join(", ", ignore) + ". ")
                     + (constraints.isEmpty() ? "" : "Constraints: "   + String.join(", ", constraints) + ".");
@@ -394,23 +421,23 @@ public class MultiAgentCoordinator {
 
             switch (agentName) {
                 case "backend"    -> {
-                    focus.addAll(List.of("API design", "database access", "caching", "performance", "error handling"));
+                    focus.addAll(List.of("API design", "database access", "caching", "performance", "error handling", "internet access", "external APIs"));
                     ignore.addAll(List.of("UI", "React", "CSS", "visual design"));
                 }
                 case "frontend"   -> {
-                    focus.addAll(List.of("React", "component design", "state flow", "responsive behavior", "accessibility"));
+                    focus.addAll(List.of("React", "component design", "state flow", "responsive behavior", "accessibility", "internet access", "external APIs"));
                     ignore.addAll(List.of("backend services", "database schema", "deployment"));
                 }
                 case "qa"         -> {
-                    focus.addAll(List.of("testing strategy", "debugging", "regression risks", "verification steps"));
+                    focus.addAll(List.of("testing strategy", "debugging", "regression risks", "verification steps", "internet access", "external APIs"));
                     ignore.addAll(List.of("visual styling", "deployment automation"));
                 }
                 case "devops"     -> {
-                    focus.addAll(List.of("monitoring", "observability", "resource usage", "reliability"));
+                    focus.addAll(List.of("monitoring", "observability", "resource usage", "reliability", "internet access", "external APIs"));
                     ignore.addAll(List.of("UI implementation", "business logic"));
                 }
                 case "knowledge"  -> {
-                    focus.addAll(List.of("personal data", "emails", "documents", "notes", "calendar", "contacts"));
+                    focus.addAll(List.of("personal data", "emails", "documents", "notes", "calendar", "contacts", "internet access", "external APIs"));
                     ignore.addAll(List.of("code generation", "infrastructure"));
                 }
                 default           -> focus.add("core request");
@@ -576,7 +603,8 @@ public class MultiAgentCoordinator {
             this.name   = "Backend";
             this.skills = Arrays.asList("java_optimization", "spring_boot_configuration",
                 "database_query_optimization", "api_design", "persistence_layer",
-                "cache_optimization", "concurrent_programming", "error_handling");
+                "cache_optimization", "concurrent_programming", "error_handling",
+                "web_research", "api_integration", "fetch_external_content");
         }
         @Override public Object process(AgentMessage msg) {
             long start = System.currentTimeMillis();
@@ -600,7 +628,8 @@ public class MultiAgentCoordinator {
             this.name   = "Frontend";
             this.skills = Arrays.asList("react_optimization", "component_design", "state_management",
                 "performance_tuning", "css_optimization", "accessibility",
-                "responsive_design", "bundle_optimization");
+                "responsive_design", "bundle_optimization",
+                "web_research", "api_integration", "fetch_external_content");
         }
         @Override public Object process(AgentMessage msg) {
             long start = System.currentTimeMillis();
@@ -623,7 +652,8 @@ public class MultiAgentCoordinator {
             this.name   = "DevOps";
             this.skills = Arrays.asList("performance_monitoring", "log_aggregation", "metrics_collection",
                 "alerting", "health_checks", "capacity_planning",
-                "resource_optimization", "skill_synchronization");
+                "resource_optimization", "skill_synchronization",
+                "web_research", "api_integration", "fetch_external_content");
         }
         @Override public Object process(AgentMessage msg) {
             long start = System.currentTimeMillis();
@@ -646,7 +676,8 @@ public class MultiAgentCoordinator {
             this.name   = "QA";
             this.skills = Arrays.asList("unit_testing", "integration_testing", "debugging",
                 "code_review", "regression_testing", "performance_testing",
-                "security_testing", "compatibility_testing");
+                "security_testing", "compatibility_testing",
+                "web_research", "api_integration", "fetch_external_content");
         }
         @Override public Object process(AgentMessage msg) {
             long start = System.currentTimeMillis();
@@ -675,7 +706,8 @@ public class MultiAgentCoordinator {
             this.name          = "Knowledge";
             this.memoryService = memoryService;
             this.skills        = Arrays.asList("search_memory", "search_emails",
-                "search_documents", "search_notes", "search_calendar", "search_contacts");
+                "search_documents", "search_notes", "search_calendar", "search_contacts",
+                "web_research", "api_integration", "fetch_external_content");
         }
 
         @Override

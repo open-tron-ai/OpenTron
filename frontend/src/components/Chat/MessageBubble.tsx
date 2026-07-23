@@ -125,17 +125,13 @@ export function MessageBubble({ message, isLive = false }: Props) {
 
   const cleanContent = useMemo(() => stripThinkTags(message.content), [message.content]);
   
-  // Check if this is an Analysis Results message
   const isAnalysisResults = cleanContent?.startsWith('## 🎯 Analysis Results');
 
-  // Check if this is an agent response message (thinking or completed)
   const isAgentResponse = useMemo(() => {
     const content = cleanContent || '';
-    // Agent messages start with emoji + agent name
     return /^[🤔💭✓❌]\s+\w+\s+(?:Agent|agent)/.test(content);
   }, [cleanContent]);
-  // Detect grouped agent sections formatted as:
-  // **AgentName Agent:**\n<content>\n\n**Other Agent Agent:**\n<content>
+
   const agentSections = useMemo(() => {
     const text = cleanContent || '';
     const regex = /\*\*([^*]+?) Agent:\*\*\s*\n?([\s\S]*?)(?=(\n\n\*\*[^*]+? Agent:\*\*|$))/g;
@@ -149,8 +145,6 @@ export function MessageBubble({ message, isLive = false }: Props) {
     return parts.length > 0 ? parts : null;
   }, [cleanContent]);
 
-  // Build a ref→source lookup once per render. Memoized so the rehype plugin
-  // identity stays stable until the source list actually changes.
   const sourcesMap = useMemo(() => {
     const m = new Map<number, NonNullable<ChatMessage['researchSources']>[number]>();
     for (const s of message.researchSources ?? []) {
@@ -167,7 +161,6 @@ export function MessageBubble({ message, isLive = false }: Props) {
 
   return (
     <div className="group mb-6">
-      {/* Deep Research timeline (steps + status) */}
       {(message.isResearch || (message.researchTraces && message.researchTraces.length > 0)) && (
         <ResearchTimeline
           traces={message.researchTraces ?? []}
@@ -176,7 +169,6 @@ export function MessageBubble({ message, isLive = false }: Props) {
         />
       )}
 
-      {/* Tool calls */}
       {message.toolCalls && message.toolCalls.length > 0 && (
         <div className="mb-3 flex flex-col gap-2">
           {message.toolCalls.map((tc) => (
@@ -185,13 +177,10 @@ export function MessageBubble({ message, isLive = false }: Props) {
         </div>
       )}
 
-      {/* Audio player (e.g. morning digest) */}
       {message.audio?.url && <AudioPlayer src={message.audio.url} />}
 
-      {/* Agent response card (thinking or completed) */}
       {isAgentResponse && <AgentResponseCard message={{ ...message, content: cleanContent }} />}
 
-      {/* Assistant message or grouped agent cards */}
       {!isAgentResponse && agentSections ? (
         <div className="flex flex-col gap-3">
           {agentSections.map((sec, index) => (
@@ -217,9 +206,7 @@ export function MessageBubble({ message, isLive = false }: Props) {
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={rehypePlugins}
-              components={{
-                pre: CodeBlockPre,
-              }}
+              components={{ pre: CodeBlockPre }}
             >
               {cleanContent}
             </ReactMarkdown>
@@ -231,9 +218,7 @@ export function MessageBubble({ message, isLive = false }: Props) {
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={rehypePlugins}
-              components={{
-                pre: CodeBlockPre,
-              }}
+              components={{ pre: CodeBlockPre }}
             >
               {cleanContent}
             </ReactMarkdown>
@@ -241,7 +226,6 @@ export function MessageBubble({ message, isLive = false }: Props) {
         )
       )}
 
-      {/* Footer: copy + x-ray */}
       <div className="flex items-center gap-2 mt-1.5">
         <CopyMessageButton content={cleanContent} />
       </div>
